@@ -1,0 +1,424 @@
+/* ========================================
+   GURU LAYOUT
+   ======================================== */
+.guru-layout {
+    min-height: 100vh;
+    display: flex;
+    flex-direction: column;
+    padding-bottom: var(--bottom-nav-height);
+}
+
+/* ========================================
+   TOPBAR (Mobile)
+   ======================================== */
+.guru-topbar {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: var(--space-4) var(--space-5);
+    background-color: var(--color-surface);
+    border-bottom: 1px solid var(--color-border-light);
+    position: sticky;
+    top: 0;
+    z-index: var(--z-sticky);
+}
+
+.guru-topbar-title {
+    font-size: var(--text-lg);
+    font-weight: 600;
+}
+
+/* ========================================
+   PAGE CONTENT
+   ======================================== */
+.guru-page-content {
+    flex: 1;
+    padding: var(--space-5);
+}
+
+/* ========================================
+   BOTTOM NAVIGATION
+   ======================================== */
+.bottom-nav {
+    position: fixed;
+    bottom: 0;
+    left: 0;
+    right: 0;
+    height: var(--bottom-nav-height);
+    background-color: var(--color-surface);
+    border-top: 1px solid var(--color-border-light);
+    display: flex;
+    align-items: center;
+    justify-content: space-around;
+    padding: 0 var(--space-2);
+    z-index: var(--z-sticky);
+    padding-bottom: env(safe-area-inset-bottom, 0);
+}
+
+.bottom-nav-item {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 2px;
+    padding: var(--space-2) var(--space-3);
+    text-decoration: none;
+    color: var(--color-text-muted);
+    font-size: 11px;
+    font-weight: 500;
+    transition: color var(--transition-fast);
+    min-width: 64px;
+    border-radius: var(--radius-md);
+    border: none;
+    background: none;
+    cursor: pointer;
+}
+
+.bottom-nav-item:hover {
+    color: var(--color-text);
+}
+
+.bottom-nav-item.active {
+    color: var(--color-primary);
+}
+
+.bottom-nav-item svg {
+    width: 22px;
+    height: 22px;
+}
+
+/* ========================================
+   STATUS CARD (Today)
+   ======================================== */
+.status-card {
+    background-color: var(--color-surface);
+    border: 1px solid var(--color-border-light);
+    border-radius: var(--radius-xl);
+    padding: var(--space-6);
+    text-align: center;
+}
+
+.status-card-date {
+    font-size: var(--text-sm);
+    color: var(--color-text-muted);
+    margin-bottom: var(--space-2);
+}
+
+.status-card-status {
+    font-size: var(--text-xl);
+    font-weight: 600;
+    margin-bottom: var(--space-1);
+}
+
+.status-card-time {
+    font-size: var(--text-sm);
+    color: var(--color-text-muted);
+    margin-bottom: var(--space-4);
+}
+
+.status-card.hadir .status-card-status { color: var(--color-success); }
+.status-card.terlambat .status-card-status { color: var(--color-warning); }
+.status-card.izin .status-card-status { color: var(--color-info); }
+.status-card.sakit .status-card-status { color: var(--color-danger); }
+.status-card.tak .status-card-status { color: var(--color-danger); }
+.status-card.belum .status-card-status { color: var(--color-text-muted); }
+
+/* ========================================
+   ATTENDANCE PAGE
+   ======================================== */
+.attendance-container {
+    display: flex;
+    flex-direction: column;
+    gap: var(--space-5);
+}
+
+.attendance-camera {
+    position: relative;
+    width: 100%;
+    aspect-ratio: 3/4;
+    background-color: #000;
+    border-radius: var(--radius-xl);
+    overflow: hidden;
+}
+
+.attendance-camera video,
+.attendance-camera img {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+}
+
+.attendance-camera-placeholder {
+    position: absolute;
+    inset: 0;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    color: var(--color-text-light);
+    gap: var(--space-3);
+}
+
+.attendance-camera-placeholder svg {
+    width: 48px;
+    height: 48px;
+}
+
+.attendance-info {
+    display: flex;
+    flex-direction: column;
+    gap: var(--space-3);
+}
+
+.attendance-info-item {
+    display: flex;
+    align-items: center;
+    gap: var(--space-3);
+    padding: var(--space-3);
+    background-color: var(--color-surface-muted);
+    border-radius: var(--radius-lg);
+    font-size: var(--text-sm);
+}
+
+.attendance-info-item svg {
+    width: 18px;
+    height: 18px;
+    color: var(--color-text-muted);
+    flex-shrink: 0;
+}
+
+.attendance-info-item .label {
+    color: var(--color-text-muted);
+    min-width: 80px;
+}
+
+.attendance-info-item .value {
+    font-weight: 500;
+}
+
+.attendance-btn {
+    width: 100%;
+    padding: 14px;
+    font-size: var(--text-base);
+    font-weight: 600;
+}
+
+/* ========================================
+   HISTORY LIST
+   ======================================== */
+.history-list {
+    display: flex;
+    flex-direction: column;
+    gap: var(--space-3);
+}
+
+.history-item {
+    display: flex;
+    align-items: center;
+    gap: var(--space-4);
+    padding: var(--space-4);
+    background-color: var(--color-surface);
+    border: 1px solid var(--color-border-light);
+    border-radius: var(--radius-lg);
+}
+
+.history-item-date {
+    text-align: center;
+    min-width: 48px;
+}
+
+.history-item-day {
+    font-size: var(--text-xl);
+    font-weight: 600;
+    line-height: 1;
+}
+
+.history-item-month {
+    font-size: var(--text-xs);
+    color: var(--color-text-muted);
+    text-transform: uppercase;
+}
+
+.history-item-info {
+    flex: 1;
+}
+
+.history-item-status {
+    font-size: var(--text-sm);
+    font-weight: 600;
+    margin-bottom: 2px;
+}
+
+.history-item-time {
+    font-size: var(--text-xs);
+    color: var(--color-text-muted);
+}
+
+/* ========================================
+   CALENDAR
+   ======================================== */
+.calendar-grid {
+    display: grid;
+    grid-template-columns: repeat(7, 1fr);
+    gap: 2px;
+}
+
+.calendar-header {
+    padding: var(--space-2);
+    text-align: center;
+    font-size: var(--text-xs);
+    font-weight: 600;
+    color: var(--color-text-muted);
+}
+
+.calendar-day {
+    aspect-ratio: 1;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    padding: var(--space-1);
+    border-radius: var(--radius-md);
+    cursor: pointer;
+    transition: background-color var(--transition-fast);
+    font-size: var(--text-sm);
+    gap: 2px;
+    border: none;
+    background: none;
+    color: var(--color-text);
+}
+
+.calendar-day:hover {
+    background-color: var(--color-surface-muted);
+}
+
+.calendar-day.today {
+    font-weight: 600;
+    background-color: var(--color-primary-light);
+}
+
+.calendar-day.empty {
+    cursor: default;
+}
+
+.calendar-day.empty:hover {
+    background: none;
+}
+
+.calendar-dot {
+    width: 6px;
+    height: 6px;
+    border-radius: 50%;
+}
+
+.calendar-dot.hadir { background-color: var(--color-success); }
+.calendar-dot.terlambat { background-color: var(--color-warning); }
+.calendar-dot.izin { background-color: var(--color-info); }
+.calendar-dot.sakit { background-color: var(--color-danger); }
+.calendar-dot.tak { background-color: var(--color-danger); }
+
+.calendar-nav {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    margin-bottom: var(--space-4);
+}
+
+.calendar-nav-title {
+    font-size: var(--text-lg);
+    font-weight: 600;
+}
+
+/* ========================================
+   REKAP
+   ======================================== */
+.rekap-grid {
+    display: grid;
+    grid-template-columns: repeat(2, 1fr);
+    gap: var(--space-3);
+}
+
+.rekap-item {
+    padding: var(--space-4);
+    background-color: var(--color-surface);
+    border: 1px solid var(--color-border-light);
+    border-radius: var(--radius-lg);
+    text-align: center;
+}
+
+.rekap-item-value {
+    font-size: var(--text-2xl);
+    font-weight: 600;
+}
+
+.rekap-item-label {
+    font-size: var(--text-xs);
+    color: var(--color-text-muted);
+    margin-top: var(--space-1);
+}
+
+.rekap-percentage {
+    padding: var(--space-6);
+    background-color: var(--color-surface);
+    border: 1px solid var(--color-border-light);
+    border-radius: var(--radius-lg);
+    text-align: center;
+    margin-top: var(--space-3);
+}
+
+.rekap-percentage-value {
+    font-size: var(--text-3xl);
+    font-weight: 700;
+    color: var(--color-primary);
+}
+
+.rekap-percentage-label {
+    font-size: var(--text-sm);
+    color: var(--color-text-muted);
+    margin-top: var(--space-1);
+}
+
+/* ========================================
+   ACCOUNT PAGE
+   ======================================== */
+.account-info {
+    display: flex;
+    flex-direction: column;
+    gap: var(--space-4);
+}
+
+.account-field {
+    display: flex;
+    flex-direction: column;
+    gap: var(--space-1);
+}
+
+.account-field-label {
+    font-size: var(--text-xs);
+    color: var(--color-text-muted);
+    text-transform: uppercase;
+    letter-spacing: 0.025em;
+}
+
+.account-field-value {
+    font-size: var(--text-sm);
+    font-weight: 500;
+    color: var(--color-text);
+}
+
+/* ========================================
+   RESPONSIVE (Desktop)
+   ======================================== */
+@media (min-width: 768px) {
+    .guru-layout {
+        max-width: 480px;
+        margin: 0 auto;
+        border-left: 1px solid var(--color-border-light);
+        border-right: 1px solid var(--color-border-light);
+    }
+
+    .bottom-nav {
+        max-width: 480px;
+        left: 50%;
+        transform: translateX(-50%);
+    }
+}
