@@ -33,5 +33,15 @@ class DatabaseSeeder extends Seeder
             'sk' => 'SK/2024/001',
             'spmt' => 'SPMT/2024/001',
         ]);
+
+        // School settings
+        \App\Models\SchoolSetting::set('school_name', 'SMKN 11 KABUPATEN TANGERANG');
+        \App\Models\SchoolSetting::set('latitude', '-6.2011');
+        \App\Models\SchoolSetting::set('longitude', '106.393');
+        \App\Models\SchoolSetting::set('attendance_radius', '200');
+        \App\Models\SchoolSetting::set('work_start_time', '07:00');
+        \App\Models\SchoolSetting::set('present_until', '08:30');
+        \App\Models\SchoolSetting::set('late_until', '09:00');
+        \App\Models\SchoolSetting::set('checkout_start_time', '15:00');
     }
 }

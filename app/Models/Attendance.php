@@ -17,9 +17,11 @@ class Attendance extends Model
         'lat_masuk',
         'lng_masuk',
         'distance_masuk',
+        'accuracy_masuk',
         'lat_pulang',
         'lng_pulang',
         'distance_pulang',
+        'accuracy_pulang',
         'keterangan',
         'bukti_file',
     ];

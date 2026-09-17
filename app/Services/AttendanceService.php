@@ -22,6 +22,7 @@ class AttendanceService
     {
         $saved = SchoolSetting::allAsArray();
         $this->settings = array_merge([
+            'school_name' => 'SMKN 11 KABUPATEN TANGERANG',
             'latitude' => -6.2011,
             'longitude' => 106.393,
             'attendance_radius' => 200,
@@ -48,14 +49,25 @@ class AttendanceService
 
             $distance = $this->calculateDistance(
                 $data['latitude'], $data['longitude'],
-                $this->settings['latitude'], $this->settings['longitude']
+                (float) $this->settings['latitude'], (float) $this->settings['longitude']
             );
 
-            if ($distance > $this->settings['attendance_radius']) {
-                return ['success' => false, 'message' => "Anda berada di luar radius sekolah. Jarak: " . round($distance) . "m (maks: {$this->settings['attendance_radius']}m)", 'code' => 422];
+            $radius = (int) $this->settings['attendance_radius'];
+            if ($distance > $radius) {
+                return [
+                    'success' => false,
+                    'message' => "Anda berada di luar radius sekolah. Jarak: " . round($distance) . "m (maks: {$radius}m)",
+                    'code' => 422,
+                ];
             }
 
             $jamMasuk = now()->format('H:i:s');
+            $lateUntil = $this->settings['late_until'];
+
+            if ($jamMasuk > $lateUntil) {
+                return ['success' => false, 'message' => 'Batas waktu absen masuk telah lewat (' . $lateUntil . '). Anda tidak dapat melakukan absensi.', 'code' => 422];
+            }
+
             $status = $this->determineStatus($jamMasuk);
 
             $attendance = Attendance::create([
@@ -66,12 +78,12 @@ class AttendanceService
                 'lat_masuk' => $data['latitude'],
                 'lng_masuk' => $data['longitude'],
                 'distance_masuk' => round($distance, 2),
+                'accuracy_masuk' => $data['accuracy'] ?? null,
             ]);
 
-            if (!empty($data['selfie'])) {
-                $path = $data['selfie']->store('attendance/selfie', 'public');
-                $attendance->update(['foto_masuk' => $path]);
-            }
+            $filename = 'selfie_' . $user->id . '_' . time() . '_' . bin2hex(random_bytes(4)) . '.' . $data['selfie']->getClientOriginalExtension();
+            $path = $data['selfie']->storeAs('attendance/selfie', $filename, 'public');
+            $attendance->update(['foto_masuk' => $path]);
 
             return [
                 'success' => true,
@@ -102,11 +114,16 @@ class AttendanceService
 
             $distance = $this->calculateDistance(
                 $data['latitude'], $data['longitude'],
-                $this->settings['latitude'], $this->settings['longitude']
+                (float) $this->settings['latitude'], (float) $this->settings['longitude']
             );
 
-            if ($distance > $this->settings['attendance_radius']) {
-                return ['success' => false, 'message' => "Anda berada di luar radius sekolah. Jarak: " . round($distance) . "m (maks: {$this->settings['attendance_radius']}m)", 'code' => 422];
+            $radius = (int) $this->settings['attendance_radius'];
+            if ($distance > $radius) {
+                return [
+                    'success' => false,
+                    'message' => "Anda berada di luar radius sekolah. Jarak: " . round($distance) . "m (maks: {$radius}m)",
+                    'code' => 422,
+                ];
             }
 
             $attendance->update([
@@ -114,12 +131,12 @@ class AttendanceService
                 'lat_pulang' => $data['latitude'],
                 'lng_pulang' => $data['longitude'],
                 'distance_pulang' => round($distance, 2),
+                'accuracy_pulang' => $data['accuracy'] ?? null,
             ]);
 
-            if (!empty($data['selfie'])) {
-                $path = $data['selfie']->store('attendance/selfie', 'public');
-                $attendance->update(['foto_pulang' => $path]);
-            }
+            $filename = 'selfie_' . $user->id . '_' . time() . '_' . bin2hex(random_bytes(4)) . '.' . $data['selfie']->getClientOriginalExtension();
+            $path = $data['selfie']->storeAs('attendance/selfie', $filename, 'public');
+            $attendance->update(['foto_pulang' => $path]);
 
             return ['success' => true, 'message' => 'Absensi pulang berhasil disimpan.'];
         });
@@ -127,9 +144,9 @@ class AttendanceService
 
     public function determineStatus(string $jamMasuk): AttendanceStatus
     {
-        $lateUntil = $this->settings['late_until'];
+        $presentUntil = $this->settings['present_until'];
 
-        if ($jamMasuk > $lateUntil) {
+        if ($jamMasuk > $presentUntil) {
             return AttendanceStatus::Terlambat;
         }
 

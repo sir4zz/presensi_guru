@@ -5,13 +5,16 @@
 
 @section('content')
 <div class="calendar-nav">
-    <button class="btn btn-ghost btn-icon" id="prevMonth">
+    <a href="{{ $prevUrl }}" class="btn btn-ghost btn-icon">
         <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="15 18 9 12 15 6"/></svg>
-    </button>
-    <div class="calendar-nav-title" id="calendarTitle">{{ Carbon\Carbon::now()->translatedFormat('F Y') }}</div>
-    <button class="btn btn-ghost btn-icon" id="nextMonth">
+    </a>
+    <div style="display:flex; align-items:center; gap:var(--space-3);">
+        <div class="calendar-nav-title">{{ $monthName }}</div>
+        <a href="{{ $todayUrl }}" class="btn btn-sm btn-secondary">Hari Ini</a>
+    </div>
+    <a href="{{ $nextUrl }}" class="btn btn-ghost btn-icon">
         <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="9 18 15 12 9 6"/></svg>
-    </button>
+    </a>
 </div>
 
 <div class="calendar-grid" id="calendarGrid">
@@ -27,6 +30,9 @@
 <div class="card" style="margin-top: var(--space-4); display: none;" id="dayDetail">
     <div class="card-header">
         <h3 class="card-title" id="dayDetailTitle">Detail Hari</h3>
+        <button class="btn btn-ghost btn-sm btn-icon" onclick="document.getElementById('dayDetail').style.display='none'">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+        </button>
     </div>
     <div id="dayDetailContent">
         <p style="color: var(--color-text-muted); font-size: var(--text-sm);">Pilih tanggal pada kalender untuk melihat detail.</p>
@@ -65,120 +71,119 @@
 
 @push('scripts')
 <script>
-document.addEventListener('DOMContentLoaded', function() {
-    let currentMonth = parseInt('{{ request("month", date("m")) }}');
-    let currentYear = parseInt('{{ request("year", date("Y")) }}');
-    const attendanceData = @json($attendanceData ?? []);
+(function() {
+    var attendanceData = @json($attendanceData ?? []);
+    var holidayMap = @json($holidayMap ?? []);
 
-    const calendarGrid = document.getElementById('calendarGrid');
-    const calendarTitle = document.getElementById('calendarTitle');
-    const dayDetail = document.getElementById('dayDetail');
-    const dayDetailTitle = document.getElementById('dayDetailTitle');
-    const dayDetailContent = document.getElementById('dayDetailContent');
+    var calendarGrid = document.getElementById('calendarGrid');
+    var dayDetail = document.getElementById('dayDetail');
+    var dayDetailTitle = document.getElementById('dayDetailTitle');
+    var dayDetailContent = document.getElementById('dayDetailContent');
+
+    var month = {{ $month }};
+    var year = {{ $year }};
 
     function renderCalendar() {
-        // Clear existing days
-        const existingDays = calendarGrid.querySelectorAll('.calendar-day');
-        existingDays.forEach(el => el.remove());
+        var existingDays = calendarGrid.querySelectorAll('.calendar-day');
+        existingDays.forEach(function(el) { el.remove(); });
 
-        const monthNames = ['Januari', 'Februari', 'Maret', 'April', 'Mei', 'Juni', 'Juli', 'Agustus', 'September', 'Oktober', 'November', 'Desember'];
-        calendarTitle.textContent = monthNames[currentMonth - 1] + ' ' + currentYear;
+        var firstDay = new Date(year, month - 1, 1).getDay();
+        var daysInMonth = new Date(year, month, 0).getDate();
+        var today = new Date();
 
-        const firstDay = new Date(currentYear, currentMonth - 1, 1).getDay();
-        const daysInMonth = new Date(currentYear, currentMonth, 0).getDate();
-        const today = new Date();
-
-        // Empty days
-        for (let i = 0; i < firstDay; i++) {
-            const emptyDay = document.createElement('div');
+        for (var i = 0; i < firstDay; i++) {
+            var emptyDay = document.createElement('div');
             emptyDay.className = 'calendar-day empty';
             calendarGrid.appendChild(emptyDay);
         }
 
-        // Days
-        for (let day = 1; day <= daysInMonth; day++) {
-            const dayEl = document.createElement('button');
+        for (var day = 1; day <= daysInMonth; day++) {
+            var dayEl = document.createElement('button');
+            dayEl.type = 'button';
             dayEl.className = 'calendar-day';
-            dayEl.innerHTML = `<span>${day}</span>`;
 
-            const dateStr = `${currentYear}-${String(currentMonth).padStart(2, '0')}-${String(day).padStart(2, '0')}`;
+            var dateStr = year + '-' + String(month).padStart(2, '0') + '-' + String(day).padStart(2, '0');
+            var dateObj = new Date(year, month - 1, day);
+            var dayOfWeek = dateObj.getDay();
+            var isWeekend = dayOfWeek === 0 || dayOfWeek === 6;
+            var isHoliday = holidayMap[dateStr] !== undefined;
 
-            if (today.getDate() === day && today.getMonth() + 1 === currentMonth && today.getFullYear() === currentYear) {
+            if (isWeekend) dayEl.classList.add('weekend');
+            if (isHoliday) dayEl.classList.add('has-holiday');
+
+            if (today.getDate() === day && today.getMonth() + 1 === month && today.getFullYear() === year) {
                 dayEl.classList.add('today');
             }
 
-            // Check attendance data
-            const att = attendanceData.find(a => a.tanggal === dateStr);
-            if (att) {
-                const dot = document.createElement('div');
-                dot.className = `calendar-dot ${att.status}`;
-                dayEl.appendChild(dot);
+            var html = '<span>' + day + '</span>';
+
+            if (isHoliday) {
+                html += '<span class="calendar-holiday-dot"></span>';
             }
 
-            dayEl.addEventListener('click', function() {
-                showDayDetail(dateStr, att);
-            });
+            var att = attendanceData.find(function(a) { return a.tanggal === dateStr; });
+            if (att) {
+                html += '<div class="calendar-dot ' + att.status + '"></div>';
+            }
+
+            dayEl.innerHTML = html;
+
+            dayEl.addEventListener('click', (function(d, dd, hh) {
+                return function() { showDayDetail(d, dd, hh); };
+            })(dateStr, att, isHoliday ? holidayMap[dateStr] : null));
 
             calendarGrid.appendChild(dayEl);
         }
     }
 
-    function showDayDetail(dateStr, att) {
-        const date = new Date(dateStr);
-        const options = { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' };
+    function showDayDetail(dateStr, att, holiday) {
+        var date = new Date(dateStr + 'T00:00:00');
+        var options = { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' };
         dayDetailTitle.textContent = date.toLocaleDateString('id-ID', options);
 
-        if (att) {
-            let statusBadge = '';
-            if (att.status === 'hadir') statusBadge = '<span class="badge badge-success">Hadir</span>';
-            else if (att.status === 'terlambat') statusBadge = '<span class="badge badge-warning">Terlambat</span>';
-            else if (att.status === 'izin') statusBadge = '<span class="badge badge-info">Izin</span>';
-            else if (att.status === 'sakit') statusBadge = '<span class="badge badge-danger">Sakit</span>';
-            else statusBadge = '<span class="badge badge-danger">TAK</span>';
+        var html = '';
 
-            dayDetailContent.innerHTML = `
-                <div style="display: flex; flex-direction: column; gap: var(--space-3);">
-                    <div style="display: flex; align-items: center; gap: var(--space-2);">
-                        <span style="font-size: var(--text-sm); color: var(--color-text-muted); min-width: 80px;">Status</span>
-                        ${statusBadge}
-                    </div>
-                    <div style="display: flex; align-items: center; gap: var(--space-2);">
-                        <span style="font-size: var(--text-sm); color: var(--color-text-muted); min-width: 80px;">Masuk</span>
-                        <span style="font-size: var(--text-sm); font-weight: 500;">${att.jam_masuk || '-'}</span>
-                    </div>
-                    <div style="display: flex; align-items: center; gap: var(--space-2);">
-                        <span style="font-size: var(--text-sm); color: var(--color-text-muted); min-width: 80px;">Pulang</span>
-                        <span style="font-size: var(--text-sm); font-weight: 500;">${att.jam_pulang || '-'}</span>
-                    </div>
-                    ${att.keterangan ? `<div style="display: flex; align-items: center; gap: var(--space-2);"><span style="font-size: var(--text-sm); color: var(--color-text-muted); min-width: 80px;">Keterangan</span><span style="font-size: var(--text-sm);">${att.keterangan}</span></div>` : ''}
-                </div>
-            `;
-        } else {
-            dayDetailContent.innerHTML = '<p style="color: var(--color-text-muted); font-size: var(--text-sm);">Tidak ada data absensi pada tanggal ini.</p>';
+        if (holiday) {
+            html += '<div class="holiday-banner">';
+            html += '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="width:16px;height:16px;color:var(--color-danger);"><path d="M10 9l5 3-5 3v-6z"/><rect x="3" y="3" width="18" height="18" rx="2"/></svg>';
+            html += '<span><strong>' + holiday.name + '</strong>';
+            if (holiday.description) html += ' - ' + holiday.description;
+            html += '</span></div>';
         }
 
+        if (att) {
+            var statusBadge = { hadir: 'success', terlambat: 'warning', izin: 'info', sakit: 'danger' };
+            var statusLabel = { hadir: 'Hadir', terlambat: 'Terlambat', izin: 'Izin', sakit: 'Sakit', alpha: 'TAK', tidak_ada_keterangan: 'TAK' };
+            html += '<div style="display: flex; flex-direction: column; gap: var(--space-3);">';
+            html += '<div style="display: flex; align-items: center; gap: var(--space-2);">';
+            html += '<span style="font-size: var(--text-sm); color: var(--color-text-muted); min-width: 80px;">Status</span>';
+            html += '<span class="badge badge-' + (statusBadge[att.status] || 'danger') + '">' + (statusLabel[att.status] || att.status) + '</span></div>';
+            html += '<div style="display: flex; align-items: center; gap: var(--space-2);">';
+            html += '<span style="font-size: var(--text-sm); color: var(--color-text-muted); min-width: 80px;">Masuk</span>';
+            html += '<span style="font-size: var(--text-sm); font-weight: 500;">' + (att.jam_masuk || '-') + '</span></div>';
+            html += '<div style="display: flex; align-items: center; gap: var(--space-2);">';
+            html += '<span style="font-size: var(--text-sm); color: var(--color-text-muted); min-width: 80px;">Pulang</span>';
+            html += '<span style="font-size: var(--text-sm); font-weight: 500;">' + (att.jam_pulang || '-') + '</span></div>';
+            if (att.foto_masuk) {
+                html += '<div style="display: flex; align-items: center; gap: var(--space-2);">';
+                html += '<span style="font-size: var(--text-sm); color: var(--color-text-muted); min-width: 80px;">Foto</span>';
+                html += '<img src="/storage/' + att.foto_masuk + '" alt="Foto" style="width:48px;height:48px;border-radius:var(--radius-md);object-fit:cover;"></div>';
+            }
+            if (att.distance_masuk) {
+                html += '<div style="display: flex; align-items: center; gap: var(--space-2);">';
+                html += '<span style="font-size: var(--text-sm); color: var(--color-text-muted); min-width: 80px;">Jarak</span>';
+                html += '<span style="font-size: var(--text-sm);">' + att.distance_masuk + ' meter</span></div>';
+            }
+            html += '</div>';
+        } else {
+            html += '<p style="color: var(--color-text-muted); font-size: var(--text-sm);">Tidak ada data absensi pada tanggal ini.</p>';
+        }
+
+        dayDetailContent.innerHTML = html;
         dayDetail.style.display = 'block';
     }
 
-    document.getElementById('prevMonth').addEventListener('click', function() {
-        currentMonth--;
-        if (currentMonth < 1) {
-            currentMonth = 12;
-            currentYear--;
-        }
-        window.location.href = '{{ route("guru.calendar.index") }}?month=' + currentMonth + '&year=' + currentYear;
-    });
-
-    document.getElementById('nextMonth').addEventListener('click', function() {
-        currentMonth++;
-        if (currentMonth > 12) {
-            currentMonth = 1;
-            currentYear++;
-        }
-        window.location.href = '{{ route("guru.calendar.index") }}?month=' + currentMonth + '&year=' + currentYear;
-    });
-
     renderCalendar();
-});
+})();
 </script>
 @endpush
