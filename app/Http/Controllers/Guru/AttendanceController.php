@@ -27,11 +27,32 @@ class AttendanceController extends Controller
             'max_accuracy' => 100,
         ];
 
-        $serverTime = now()->format('H:i:s');
-        $lateUntil = $settings['late_until'] ?? '09:00';
+        // Waktu server Asia/Jakarta (mengikuti config app.timezone).
+        $serverTimeFull = now()->format('H:i:s');
+        $serverTime = substr($serverTimeFull, 0, 5);
+        $lateUntil = substr((string) ($settings['late_until'] ?? '09:00'), 0, 5);
         $canCheckIn = $serverTime <= $lateUntil;
 
-        return view('guru.attendance.create', compact('todayAttendance', 'schoolSettings', 'canCheckIn', 'lateUntil'));
+        // Jendela absensi pulang memakai checkout_start_time Admin s.d. 17:00.
+        $checkoutWindow = $this->attendanceService->getCheckoutWindow($serverTime);
+        $checkoutStart = $checkoutWindow['start'];
+        $checkoutEnd = $checkoutWindow['end'];
+        $checkoutStatus = $checkoutWindow['status'];
+        $canCheckout = $checkoutWindow['can_checkout'];
+
+        $isCheckIn = !$todayAttendance || !$todayAttendance->jam_masuk;
+        $hasCheckedOut = (bool) ($todayAttendance?->jam_pulang);
+
+        // Tanggal merah (Minggu/libur): sistem absensi ditutup.
+        $redDate = $this->attendanceService->isRedDate(now()->toDateString());
+
+        return view('guru.attendance.create', compact(
+            'todayAttendance', 'schoolSettings',
+            'canCheckIn', 'lateUntil',
+            'serverTime', 'serverTimeFull',
+            'checkoutStart', 'checkoutEnd', 'checkoutStatus', 'canCheckout',
+            'isCheckIn', 'hasCheckedOut', 'redDate'
+        ));
     }
 
     public function store(StoreAttendanceRequest $request)

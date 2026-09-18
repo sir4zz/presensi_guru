@@ -199,6 +199,131 @@ document.addEventListener('DOMContentLoaded', function() {
 
     // Poll every 30 seconds
     setInterval(refreshDashboard, 30000);
+
+    // ===== Charts (SVG, tanpa library tambahan) =====
+    const chartPeriod = document.getElementById('chartPeriod');
+    const chartContainer = document.getElementById('chartContainer');
+    const distributionChart = document.getElementById('distributionChart');
+
+    const SERIES = [
+        { key: 'hadir', label: 'Hadir', color: 'var(--color-success)' },
+        { key: 'terlambat', label: 'Terlambat', color: 'var(--color-warning)' },
+        { key: 'izin', label: 'Izin', color: 'var(--color-info)' },
+        { key: 'sakit', label: 'Sakit', color: 'var(--color-danger)' },
+        { key: 'alpha', label: 'TAK', color: 'var(--color-danger)' }
+    ];
+
+    function emptyState(text) {
+        return '<p style="color:var(--color-text-muted); font-size:var(--text-sm); text-align:center;">' + text + '</p>';
+    }
+
+    function renderTrend(trend) {
+        const totals = trend.map(d => SERIES.reduce((s, x) => s + (d[x.key] || 0), 0));
+        const max = Math.max(1, ...totals);
+        const W = 620, H = 220, padL = 28, padB = 24, padT = 8;
+        const chartW = W - padL - 8, chartH = H - padT - padB;
+        const n = trend.length;
+        const slot = chartW / Math.max(n, 1);
+        const barW = Math.min(26, Math.max(6, slot * 0.55));
+
+        let svg = '<svg viewBox="0 0 ' + W + ' ' + H + '" style="width:100%; height:100%;" role="img" aria-label="Tren absensi">';
+
+        [0, 0.5, 1].forEach(f => {
+            const y = padT + chartH - chartH * f;
+            const val = Math.round(max * f);
+            svg += '<line x1="' + padL + '" y1="' + y + '" x2="' + W + '" y2="' + y + '" style="stroke:var(--color-border-light);stroke-width:1;"/>';
+            svg += '<text x="' + (padL - 5) + '" y="' + (y + 4) + '" text-anchor="end" style="font-size:10px;fill:var(--color-text-muted);">' + val + '</text>';
+        });
+
+        const step = Math.ceil(n / 10);
+        trend.forEach((d, i) => {
+            const total = totals[i];
+            const x = padL + slot * i + (slot - barW) / 2;
+            let y = padT + chartH;
+            if (total > 0) {
+                SERIES.forEach(s => {
+                    const v = d[s.key] || 0;
+                    if (v <= 0) return;
+                    const h = Math.max(2, chartH * v / max);
+                    y -= h;
+                    svg += '<rect x="' + x.toFixed(1) + '" y="' + y.toFixed(1) + '" width="' + barW.toFixed(1) + '" height="' + h.toFixed(1) + '" rx="2" style="fill:' + s.color + ';">'
+                        + '<title>' + d.label + ' — ' + s.label + ': ' + v + '</title></rect>';
+                });
+            }
+            if (i % step === 0 || i === n - 1) {
+                svg += '<text x="' + (x + barW / 2).toFixed(1) + '" y="' + (H - 8) + '" text-anchor="middle" style="font-size:10px;fill:var(--color-text-muted);">' + d.label + '</text>';
+            }
+        });
+
+        svg += '</svg>';
+
+        let legend = '<div style="display:flex; gap:var(--space-3); flex-wrap:wrap; font-size:var(--text-xs); color:var(--color-text-muted); margin-bottom:var(--space-2);">';
+        SERIES.forEach(s => {
+            legend += '<span style="display:inline-flex; align-items:center; gap:4px;"><span style="width:8px; height:8px; border-radius:50%; background:' + s.color + '; display:inline-block;"></span>' + s.label + '</span>';
+        });
+        legend += '</div>';
+
+        chartContainer.innerHTML = legend + svg;
+    }
+
+    function renderDistribution(dist) {
+        const total = SERIES.reduce((s, x) => s + (dist[x.key] || 0), 0);
+        if (total <= 0) {
+            distributionChart.innerHTML = emptyState('Belum ada data pada periode ini.');
+            return;
+        }
+
+        const R = 64, C = 2 * Math.PI * R;
+        let offset = 0;
+        let svg = '<svg viewBox="0 0 180 180" style="width:170px; height:170px;" role="img" aria-label="Distribusi status">';
+        svg += '<circle cx="90" cy="90" r="' + R + '" fill="none" style="stroke:var(--color-border-light);stroke-width:18;"/>';
+        SERIES.forEach(s => {
+            const v = dist[s.key] || 0;
+            if (v <= 0) return;
+            const len = C * v / total;
+            svg += '<circle cx="90" cy="90" r="' + R + '" fill="none" style="stroke:' + s.color + ';stroke-width:18;'
+                + 'stroke-dasharray:' + len.toFixed(1) + ' ' + (C - len).toFixed(1) + ';'
+                + 'stroke-dashoffset:' + (-offset).toFixed(1) + ';transform:rotate(-90deg);transform-origin:90px 90px;">'
+                + '<title>' + s.label + ': ' + v + '</title></circle>';
+            offset += len;
+        });
+        svg += '<text x="90" y="86" text-anchor="middle" style="font-size:22px; font-weight:700; fill:var(--color-text);">' + total + '</text>';
+        svg += '<text x="90" y="104" text-anchor="middle" style="font-size:11px; fill:var(--color-text-muted);">Absensi</text>';
+        svg += '</svg>';
+
+        let legend = '<div style="display:flex; flex-direction:column; gap:var(--space-2); font-size:var(--text-sm);">';
+        SERIES.forEach(s => {
+            const v = dist[s.key] || 0;
+            const pct = total > 0 ? Math.round(v / total * 100) : 0;
+            legend += '<div style="display:flex; align-items:center; gap:var(--space-2);">'
+                + '<span style="width:10px; height:10px; border-radius:50%; background:' + s.color + '; display:inline-block;"></span>'
+                + '<span style="min-width:70px;">' + s.label + '</span>'
+                + '<strong>' + v + '</strong>'
+                + '<span style="color:var(--color-text-muted);">(' + pct + '%)</span></div>';
+        });
+        legend += '</div>';
+
+        distributionChart.innerHTML = '<div style="display:flex; align-items:center; gap:var(--space-5); flex-wrap:wrap; justify-content:center;">' + svg + legend + '</div>';
+    }
+
+    function loadCharts() {
+        const period = chartPeriod ? chartPeriod.value : 'month';
+        chartContainer.innerHTML = '<p style="color:var(--color-text-muted); font-size:var(--text-sm);">Memuat...</p>';
+        fetch('/admin/dashboard/data?period=' + period, { headers: { 'Accept': 'application/json' } })
+            .then(r => r.json())
+            .then(data => {
+                renderTrend(data.trend || []);
+                renderDistribution(data.distribution || {});
+            })
+            .catch(() => {
+                chartContainer.innerHTML = emptyState('Grafik tidak dapat dimuat.');
+            });
+    }
+
+    if (chartPeriod) {
+        chartPeriod.addEventListener('change', loadCharts);
+    }
+    loadCharts();
 });
 </script>
 <style>

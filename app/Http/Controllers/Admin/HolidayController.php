@@ -7,6 +7,8 @@ use App\Http\Requests\Admin\StoreHolidayRequest;
 use App\Http\Requests\Admin\UpdateHolidayRequest;
 use App\Models\Holiday;
 use App\Services\AuditLogService;
+use App\Services\HolidaySyncService;
+use Illuminate\Http\Request;
 
 class HolidayController extends Controller
 {
@@ -47,5 +49,21 @@ class HolidayController extends Controller
         $holiday->delete();
 
         return response()->json(['success' => true, 'message' => 'Hari libur berhasil dihapus.']);
+    }
+
+    /**
+     * Sinkronkan libur nasional dari API ke tabel holidays.
+     */
+    public function sync(Request $request, HolidaySyncService $syncService)
+    {
+        $year = (int) $request->input('year', now()->year);
+
+        $result = $syncService->sync($year);
+
+        if ($result['success']) {
+            AuditLogService::created('hari_libur', new Holiday(), "Sinkronisasi libur nasional tahun {$year}: {$result['created']} ditambah, {$result['updated']} diperbarui.");
+        }
+
+        return response()->json($result, $result['success'] ? 200 : 422);
     }
 }

@@ -11,7 +11,7 @@
     <div class="flex gap-3">
         <x-button variant="secondary" id="exportBtn">
             <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
-            Export CSV
+            Export XLSX
         </x-button>
     </div>
 </div>
@@ -26,19 +26,49 @@
         <option value="">Semua Guru</option>
         @if(isset($gurus))
             @foreach($gurus as $guru)
-                <option value="{{ $guru->id }}">{{ $guru->name }}</option>
+                <option value="{{ $guru->id }}" {{ (string) request('guru_id') === (string) $guru->id ? 'selected' : '' }}>{{ $guru->name }}</option>
             @endforeach
         @endif
     </select>
-    <select class="form-select" id="statusFilter" onchange="filterTable()">
+    <select class="form-select" id="statusFilter" onchange="applyFilters()">
         <option value="">Semua Status</option>
-        <option value="hadir">Hadir</option>
-        <option value="terlambat">Terlambat</option>
-        <option value="izin">Izin</option>
-        <option value="sakit">Sakit</option>
-        <option value="tidak_ada_keterangan">TAK</option>
+        <option value="hadir" {{ request('status') == 'hadir' ? 'selected' : '' }}>Hadir</option>
+        <option value="terlambat" {{ request('status') == 'terlambat' ? 'selected' : '' }}>Terlambat</option>
+        <option value="izin" {{ request('status') == 'izin' ? 'selected' : '' }}>Izin</option>
+        <option value="sakit" {{ request('status') == 'sakit' ? 'selected' : '' }}>Sakit</option>
+        <option value="tidak_ada_keterangan" {{ in_array(request('status'), ['tidak_ada_keterangan', 'alpha']) ? 'selected' : '' }}>TAK</option>
+        <option value="pulang" {{ request('status') == 'pulang' ? 'selected' : '' }}>Sudah Pulang</option>
+        <option value="belum" {{ request('status') == 'belum' ? 'selected' : '' }}>Belum Absen</option>
     </select>
 </div>
+
+@if(isset($missingGurus) && count($missingGurus) > 0)
+    <div class="card" style="margin-bottom: var(--space-4);">
+        <div class="card-header">
+            <h3 class="card-title">Belum Absen ({{ count($missingGurus) }} guru)</h3>
+        </div>
+        <div class="table-wrapper">
+            <table class="table">
+                <thead>
+                    <tr>
+                        <th>Guru</th>
+                        <th>NIP</th>
+                        <th>Status</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    @foreach($missingGurus as $guru)
+                        <tr>
+                            <td class="font-medium">{{ $guru->name }}</td>
+                            <td class="text-muted">{{ $guru->username }}</td>
+                            <td><x-badge variant="neutral">Belum Absen</x-badge></td>
+                        </tr>
+                    @endforeach
+                </tbody>
+            </table>
+        </div>
+    </div>
+@endif
 
 @if(isset($attendances) && count($attendances) > 0)
     <div class="table-wrapper">
@@ -57,7 +87,7 @@
             </thead>
             <tbody>
                 @foreach($attendances as $att)
-                    <tr data-name="{{ strtolower($att->guru->name ?? '') }}" data-nip="{{ $att->guru->username ?? '' }}" data-status="{{ $att->status }}" data-guru-id="{{ $att->guru_id }}" data-tanggal="{{ $att->tanggal }}">
+                        <tr data-name="{{ strtolower($att->guru->name ?? '') }}" data-nip="{{ $att->guru->username ?? '' }}" data-status="{{ $att->status }}" data-guru-id="{{ $att->guru_id }}" data-tanggal="{{ $att->tanggal }}" data-pulang="{{ $att->jam_pulang ? '1' : '' }}">
                         <td>{{ \Carbon\Carbon::parse($att->tanggal)->format('d M Y') }}</td>
                         <td class="font-medium">{{ $att->guru->name ?? '-' }}</td>
                         <td class="text-muted">{{ $att->guru->username ?? '-' }}</td>
@@ -70,6 +100,8 @@
                                 <x-badge variant="info">Izin</x-badge>
                             @elseif($att->status === 'sakit')
                                 <x-badge variant="danger">Sakit</x-badge>
+                            @elseif($att->status === 'tugas_luar')
+                                <x-badge variant="info">Tugas Luar</x-badge>
                             @else
                                 <x-badge variant="danger">TAK</x-badge>
                             @endif
@@ -157,7 +189,8 @@
                 <option value="terlambat">Terlambat</option>
                 <option value="izin">Izin</option>
                 <option value="sakit">Sakit</option>
-                <option value="tidak_ada_keterangan">TAK</option>
+                <option value="alpha">TAK</option>
+                <option value="tugas_luar">Tugas Luar</option>
             </select>
         </div>
         <div style="display: grid; grid-template-columns: 1fr 1fr; gap: var(--space-4); margin-bottom: var(--space-4);">
@@ -208,8 +241,8 @@ function openDetailModal(att) {
     document.getElementById('detail_jarak').textContent = att.distance_masuk ? att.distance_masuk + ' meter' : '-';
     document.getElementById('detail_keterangan').textContent = att.keterangan || '-';
 
-    const statusMap = { hadir: 'success', terlambat: 'warning', izin: 'info', sakit: 'danger', tidak_ada_keterangan: 'danger' };
-    const labelMap = { hadir: 'Hadir', terlambat: 'Terlambat', izin: 'Izin', sakit: 'Sakit', tidak_ada_keterangan: 'TAK' };
+    const statusMap = { hadir: 'success', terlambat: 'warning', izin: 'info', sakit: 'danger', alpha: 'danger', tugas_luar: 'info', tidak_ada_keterangan: 'danger' };
+    const labelMap = { hadir: 'Hadir', terlambat: 'Terlambat', izin: 'Izin', sakit: 'Sakit', alpha: 'TAK', tugas_luar: 'Tugas Luar', tidak_ada_keterangan: 'TAK' };
     document.getElementById('detail_status').innerHTML = `<span class="badge badge-${statusMap[att.status] || 'neutral'}">${labelMap[att.status] || att.status}</span>`;
 
     const fotoSection = document.getElementById('detail_foto_section');
@@ -236,21 +269,25 @@ function openEditModal(att) {
 function filterTable() {
     const search = document.getElementById('searchInput').value.toLowerCase();
     const statusFilter = document.getElementById('statusFilter').value;
-    const guruFilter = document.getElementById('guruFilter').value;
-    const dateFilter = document.getElementById('dateFilter').value;
     const rows = document.querySelectorAll('#attendanceTable tbody tr');
 
     rows.forEach(row => {
         const name = row.dataset.name || '';
         const nip = row.dataset.nip || '';
         const status = row.dataset.status || '';
-        const guruId = row.dataset.guruId || '';
-        const tanggal = row.dataset.tanggal || '';
+        const pulang = row.dataset.pulang || '';
         const matchSearch = name.includes(search) || nip.includes(search);
-        const matchStatus = !statusFilter || status === statusFilter;
-        const matchGuru = !guruFilter || guruId === guruFilter;
-        const matchDate = !dateFilter || tanggal === dateFilter;
-        row.style.display = matchSearch && matchStatus && matchGuru && matchDate ? '' : 'none';
+        let matchStatus = true;
+        if (statusFilter === 'tidak_ada_keterangan') {
+            matchStatus = status === 'alpha' || status === 'tidak_ada_keterangan';
+        } else if (statusFilter === 'pulang') {
+            matchStatus = pulang === '1';
+        } else if (statusFilter === 'belum') {
+            matchStatus = false;
+        } else if (statusFilter) {
+            matchStatus = status === statusFilter;
+        }
+        row.style.display = matchSearch && matchStatus ? '' : 'none';
     });
 }
 

@@ -10,8 +10,8 @@ class CalendarController extends Controller
     public function index()
     {
         $user = auth()->user();
-        $month = (int) request('month', now()->month);
-        $year = (int) request('year', now()->year);
+        $month = min(12, max(1, (int) request('month', now()->month)));
+        $year = min(2100, max(2000, (int) request('year', now()->year)));
 
         $prevMonth = $month - 1;
         $prevYear = $year;

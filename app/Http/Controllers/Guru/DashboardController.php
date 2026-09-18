@@ -4,10 +4,11 @@ namespace App\Http\Controllers\Guru;
 
 use App\Http\Controllers\Controller;
 use App\Models\Attendance;
+use App\Services\AttendanceService;
 
 class DashboardController extends Controller
 {
-    public function index()
+    public function index(AttendanceService $attendanceService)
     {
         $user = auth()->user();
         $today = now()->toDateString();
@@ -26,6 +27,14 @@ class DashboardController extends Controller
 
         $recentHistory = $user->attendances()->latest('tanggal')->limit(5)->get();
 
-        return view('guru.dashboard', compact('todayAttendance', 'monthStats', 'recentHistory'));
+        $checkoutWindow = $attendanceService->getCheckoutWindow();
+        $checkoutStart = $checkoutWindow['start'];
+        $checkoutEnd = $checkoutWindow['end'];
+        $checkoutStatus = $checkoutWindow['status'];
+        $canCheckout = $checkoutWindow['can_checkout'];
+
+        $redDate = $attendanceService->isRedDate(now()->toDateString());
+
+        return view('guru.dashboard', compact('todayAttendance', 'monthStats', 'recentHistory', 'checkoutStart', 'checkoutEnd', 'checkoutStatus', 'canCheckout', 'redDate'));
     }
 }

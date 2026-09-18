@@ -19,7 +19,7 @@ use App\Http\Controllers\Guru\CalendarController;
 use App\Http\Controllers\Guru\ProfileController as GuruProfileController;
 
 // Guest routes
-Route::get('/', fn () => redirect()->route('admin.login'));
+Route::get('/', fn () => redirect()->route('guru.login'));
 
 // Admin login
 Route::get('/admin/login', function () {
@@ -107,6 +107,7 @@ Route::prefix('admin')->name('admin.')->middleware(['auth', 'role:admin'])->grou
     // Guru CRUD
     Route::get('/guru', [GuruController::class, 'index'])->name('guru.index');
     Route::get('/guru/create', [GuruController::class, 'create'])->name('guru.create');
+    Route::get('/guru/export', [GuruController::class, 'export'])->name('guru.export');
     Route::post('/guru', [GuruController::class, 'store'])->name('guru.store');
     Route::get('/guru/{id}', [GuruController::class, 'show'])->name('guru.show');
     Route::get('/guru/{id}/edit', [GuruController::class, 'edit'])->name('guru.edit');
@@ -143,6 +144,7 @@ Route::prefix('admin')->name('admin.')->middleware(['auth', 'role:admin'])->grou
     // Holidays
     Route::get('/hari-libur', [HolidayController::class, 'index'])->name('holiday.index');
     Route::post('/hari-libur', [HolidayController::class, 'store'])->name('holiday.store');
+    Route::post('/hari-libur/sync', [HolidayController::class, 'sync'])->name('holiday.sync');
     Route::put('/hari-libur/{id}', [HolidayController::class, 'update'])->name('holiday.update');
     Route::delete('/hari-libur/{id}', [HolidayController::class, 'destroy'])->name('holiday.delete');
 

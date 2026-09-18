@@ -6,13 +6,14 @@ use App\Http\Controllers\Controller;
 use App\Models\Attendance;
 use App\Models\Holiday;
 use App\Models\User;
+use Carbon\Carbon;
 
 class CalendarController extends Controller
 {
     public function index()
     {
-        $month = (int) request('month', now()->month);
-        $year = (int) request('year', now()->year);
+        $month = min(12, max(1, (int) request('month', now()->month)));
+        $year = min(2100, max(2000, (int) request('year', now()->year)));
 
         $prevMonth = $month - 1;
         $prevYear = $year;
@@ -69,19 +70,27 @@ class CalendarController extends Controller
 
     public function dayDetail($date)
     {
+        if (!preg_match('/^\d{4}-\d{2}-\d{2}$/', (string) $date)) {
+            return response()->json(['message' => 'Format tanggal tidak valid.'], 422);
+        }
+
+        $day = Carbon::parse($date);
+
         $attendances = Attendance::with('guru.guruProfile')
             ->whereDate('tanggal', $date)
             ->get();
 
         $holiday = Holiday::whereDate('date', $date)->first();
 
-        $dayOfWeek = now()->setDateFrom($date)->isoFormat('dddd');
-        $isWeekend = now()->setDateFrom($date)->dayOfWeek === 0 || now()->setDateFrom($date)->dayOfWeek === 6;
+        $dayOfWeek = $day->locale('id')->isoFormat('dddd');
+        $isWeekend = $day->dayOfWeek === 0 || $day->dayOfWeek === 6;
+        $isSunday = $day->dayOfWeek === 0;
 
         return response()->json([
             'date' => $date,
             'day_name' => $dayOfWeek,
             'is_weekend' => $isWeekend,
+            'is_sunday' => $isSunday,
             'holiday' => $holiday,
             'attendances' => $attendances->map(fn ($att) => [
                 'id' => $att->id,

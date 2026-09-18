@@ -456,6 +456,7 @@
 .cs-izin { background: var(--color-info-light); color: var(--color-info); }
 .cs-sakit { background: var(--color-danger-light); color: var(--color-danger); }
 .cs-alpha { background: var(--color-danger-light); color: var(--color-danger); }
+.cs-tugas-luar { background: var(--color-info-light); color: var(--color-info); }
 
 .calendar-legend {
     display: flex;

@@ -10,23 +10,34 @@
     <div id="stepStatus">
         <div class="status-card {{ $todayAttendance?->status ?? 'belum' }}">
             <div class="status-card-date">{{ now()->translatedFormat('l, d F Y') }}</div>
-            @if(isset($todayAttendance) && $todayAttendance)
+            @if(isset($todayAttendance) && $todayAttendance && $todayAttendance->jam_masuk)
                 @if($todayAttendance->status === 'hadir' || $todayAttendance->status === 'terlambat')
                     <div class="status-card-status">{{ ucfirst($todayAttendance->status) }}</div>
-                    <div class="status-card-time">Masuk: {{ \Carbon\Carbon::parse($todayAttendance->jam_masuk)->format('H:i') }}</div>
+                    <div class="status-card-time">Masuk: {{ \Carbon\Carbon::parse($todayAttendance->jam_masuk)->format('H:i') }}
+                        @if($todayAttendance->jam_pulang)
+                            | Pulang: {{ \Carbon\Carbon::parse($todayAttendance->jam_pulang)->format('H:i') }}
+                        @endif
+                    </div>
                     @if(!$todayAttendance->jam_pulang)
-                        <p style="margin-top: var(--space-3); font-size: var(--text-sm); color: var(--color-text-muted);">Silakan absen pulang.</p>
+                        <p style="margin-top: var(--space-3); font-size: var(--text-sm); color: var(--color-text-muted);">Absensi pulang: {{ $checkoutStart }}–{{ $checkoutEnd }} WIB (waktu server).</p>
                     @endif
                 @else
                     <div class="status-card-status">{{ ucfirst($todayAttendance->status) }}</div>
                 @endif
+            @elseif(isset($todayAttendance) && $todayAttendance)
+                <div class="status-card-status">{{ ucfirst($todayAttendance->status) }}</div>
             @else
                 <div class="status-card-status">Belum Absen</div>
                 <div class="status-card-time">Silakan absen masuk</div>
             @endif
         </div>
 
-        @if(!$todayAttendance)
+        @if(($redDate['is_red'] ?? false) && (!$todayAttendance || !$todayAttendance->jam_masuk))
+            <div class="alert alert-danger" style="margin-top: var(--space-4);">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><line x1="15" y1="9" x2="9" y2="15"/><line x1="9" y1="9" x2="15" y2="15"/></svg>
+                Sistem absensi ditutup. Hari ini {{ $redDate['reason'] }}.
+            </div>
+        @elseif(!$todayAttendance || !$todayAttendance->jam_masuk)
             @if($canCheckIn)
                 <button class="btn btn-primary btn-lg attendance-btn" id="startBtn" style="margin-top: var(--space-4);">
                     <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="width:20px;height:20px;"><path d="M23 19a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4l2-3h6l2 3h4a2 2 0 0 1 2 2z"/><circle cx="12" cy="13" r="4"/></svg>
@@ -39,10 +50,40 @@
                 </div>
             @endif
         @elseif(!$todayAttendance->jam_pulang)
-            <button class="btn btn-primary btn-lg attendance-btn" id="startBtn" style="margin-top: var(--space-4);">
-                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="width:20px;height:20px;"><polyline points="7 1 3 5 7 9"/><path d="M21 13v2a4 4 0 0 1-4 4H3"/></svg>
-                Absen Pulang
-            </button>
+            @if($canCheckout)
+                <button class="btn btn-primary btn-lg attendance-btn" id="startBtn" style="margin-top: var(--space-4);">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="width:20px;height:20px;"><polyline points="7 1 3 5 7 9"/><path d="M21 13v2a4 4 0 0 1-4 4H3"/></svg>
+                    Absen Pulang
+                </button>
+                <p style="margin-top: var(--space-2); font-size: var(--text-sm); color: var(--color-text-muted); text-align:center;">Jendela absensi pulang: {{ $checkoutStart }}–{{ $checkoutEnd }} WIB</p>
+            @elseif($checkoutStatus === 'too_early')
+                <button class="btn btn-primary btn-lg attendance-btn" id="startBtn" disabled aria-disabled="true" title="Absensi pulang belum dibuka" style="margin-top: var(--space-4); opacity:.55; cursor:not-allowed;">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="width:20px;height:20px;"><polyline points="7 1 3 5 7 9"/><path d="M21 13v2a4 4 0 0 1-4 4H3"/></svg>
+                    Absen Pulang
+                </button>
+                <div class="alert alert-warning" style="margin-top: var(--space-3);">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>
+                    Absensi pulang belum dibuka. Mulai pukul {{ $checkoutStart }} WIB.
+                </div>
+            @else
+                <button class="btn btn-primary btn-lg attendance-btn" id="startBtn" disabled aria-disabled="true" title="Waktu absensi sudah berakhir" style="margin-top: var(--space-4); opacity:.55; cursor:not-allowed;">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="width:20px;height:20px;"><polyline points="7 1 3 5 7 9"/><path d="M21 13v2a4 4 0 0 1-4 4H3"/></svg>
+                    Absen Pulang
+                </button>
+                <div class="alert alert-danger" style="margin-top: var(--space-3);">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><line x1="15" y1="9" x2="9" y2="15"/><line x1="9" y1="9" x2="15" y2="15"/></svg>
+                    Waktu absensi pulang sudah berakhir (batas {{ $checkoutEnd }} WIB).
+                </div>
+            @endif
+        @else
+            <div class="alert alert-success" style="margin-top: var(--space-4);">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"/><polyline points="22 4 12 14.01 9 11.01"/></svg>
+                Absensi pulang sudah dilakukan pukul {{ \Carbon\Carbon::parse($todayAttendance->jam_pulang)->format('H:i') }} WIB.
+            </div>
+            <div style="display:flex; gap:var(--space-2); margin-top:var(--space-4);">
+                <a href="{{ route('guru.dashboard') }}" class="btn btn-secondary" style="flex:1; text-align:center;">Kembali ke Dashboard</a>
+                <a href="{{ route('guru.history.index') }}" class="btn btn-primary" style="flex:1; text-align:center;">Lihat Riwayat</a>
+            </div>
         @endif
     </div>
 
@@ -209,7 +250,7 @@
         <input type="hidden" id="accuracy">
 
         <button class="btn btn-primary btn-lg attendance-btn" id="submitBtn" style="margin-top:var(--space-4);">
-            @if(!$todayAttendance || !$todayAttendance->jam_pulang)
+            @if($isCheckIn)
                 Absen Masuk
             @else
                 Absen Pulang
@@ -245,10 +286,14 @@
         <div class="status-card" id="resultCard">
             <div class="status-card-status" id="resultStatus" style="color:var(--color-success);">
                 <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="width:32px;height:32px;display:block;margin:0 auto var(--space-3);"><path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"/><polyline points="22 4 12 14.01 9 11.01"/></svg>
-                Absensi Berhasil
+                <span id="resultTitle">Absensi Berhasil</span>
             </div>
             <div class="status-card-time" id="resultTime"></div>
             <div id="resultDetail" style="margin-top:var(--space-4); text-align:left; font-size:var(--text-sm); color:var(--color-text-muted);"></div>
+            <div id="resultActions" style="display:flex; gap:var(--space-2); margin-top:var(--space-4);">
+                <a href="{{ route('guru.dashboard') }}" class="btn btn-secondary" style="flex:1; text-align:center;">Kembali ke Dashboard</a>
+                <a href="{{ route('guru.history.index') }}" class="btn btn-primary" style="flex:1; text-align:center;">Lihat Riwayat</a>
+            </div>
         </div>
     </div>
 
@@ -303,7 +348,10 @@
     var RADIUS = {{ $schoolSettings->attendance_radius }};
     var MAX_ACCURACY = {{ $schoolSettings->max_accuracy }};
 
-    var isCheckIn = {{ (!$todayAttendance || !$todayAttendance->jam_pulang) ? 'true' : 'false' }};
+    var isCheckIn = {{ $isCheckIn ? 'true' : 'false' }};
+    var canCheckout = {{ $canCheckout ? 'true' : 'false' }};
+    var checkoutStart = '{{ $checkoutStart }}';
+    var checkoutEnd = '{{ $checkoutEnd }}';
 
     function showStep(step) {
         stepStatus.style.display = 'none';
@@ -331,6 +379,13 @@
     // ===== START =====
     if (startBtn) {
         startBtn.addEventListener('click', function() {
+            if (startBtn.disabled) {
+                return;
+            }
+            if (!isCheckIn && !canCheckout) {
+                showStatus('warning', 'Absensi pulang hanya ' + checkoutStart + '–' + checkoutEnd + ' WIB.');
+                return;
+            }
             showStep(stepCamera);
             startCamera();
         });
@@ -567,9 +622,18 @@
                     var detail = '';
                     if (isCheckIn && result.data.status_label) {
                         detail = '<div style="margin-top:var(--space-3);"><strong>Status:</strong> ' + result.data.status_label + '</div>';
+                        document.getElementById('resultTitle').textContent = 'Absensi Masuk Berhasil';
+                    }
+                    if (!isCheckIn) {
+                        var jamPulang = result.data.jam_pulang ? result.data.jam_pulang.substring(0, 5) : new Date().toLocaleTimeString('id-ID', {hour:'2-digit', minute:'2-digit'});
+                        detail = '<div style="margin-top:var(--space-3);"><strong>Absensi pulang:</strong> ' + jamPulang + ' WIB</div>';
+                        document.getElementById('resultTitle').textContent = 'Absensi Pulang Berhasil';
                     }
                     document.getElementById('resultTime').textContent = 'Waktu: ' + new Date().toLocaleTimeString('id-ID', {hour:'2-digit', minute:'2-digit'}) + ' WIB';
                     document.getElementById('resultDetail').innerHTML = detail;
+                    // Kunci tombol agar tidak bisa absen dua kali.
+                    submitBtn.disabled = true;
+                    if (startBtn) { startBtn.disabled = true; }
                     showStep(stepResult);
                 } else {
                     showStatus('danger', result.data.message || 'Absensi gagal.');

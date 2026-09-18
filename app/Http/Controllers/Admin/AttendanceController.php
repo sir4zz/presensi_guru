@@ -7,24 +7,51 @@ use App\Http\Requests\Admin\UpdateAttendanceRequest;
 use App\Models\Attendance;
 use App\Models\User;
 use App\Services\AuditLogService;
+use App\Services\SpreadsheetExportService;
 
 class AttendanceController extends Controller
 {
     public function index()
     {
+        $status = request('status');
+        if ($status === 'all' || $status === '') {
+            $status = null;
+        } elseif ($status === 'tidak_ada_keterangan') {
+            // Nilai lama dari stat-card, di DB tersimpan sebagai 'alpha'.
+            $status = 'alpha';
+        }
+
         $query = Attendance::with('guru');
 
         if (request('guru_id')) $query->where('guru_id', request('guru_id'));
-        if (request('status')) $query->where('status', request('status'));
         if (request('date')) $query->whereDate('tanggal', request('date'));
 
-        $attendances = $query->latest('tanggal')->paginate(20);
+        $missingGurus = collect();
+        if ($status === 'belum') {
+            // Guru aktif yang belum punya record absensi pada tanggal filter (default hari ini).
+            $date = request('date', now()->toDateString());
+            $presentIds = Attendance::whereDate('tanggal', $date)->pluck('guru_id');
+            $missingGurus = User::where('role', 'guru')
+                ->where('status', 'aktif')
+                ->whereNotIn('id', $presentIds)
+                ->when(request('guru_id'), fn ($q) => $q->where('id', request('guru_id')))
+                ->orderBy('name')
+                ->get();
+            // Tidak ada baris absensi untuk status ini; yang ditampilkan daftar guru di bawah.
+            $query->whereRaw('0 = 1');
+        } elseif ($status === 'pulang') {
+            $query->whereNotNull('jam_pulang');
+        } elseif ($status) {
+            $query->where('status', $status);
+        }
+
+        $attendances = $query->latest('tanggal')->paginate(20)->withQueryString();
         $gurus = User::where('role', 'guru')->get();
 
-        return view('admin.attendance.index', compact('attendances', 'gurus'));
+        return view('admin.attendance.index', compact('attendances', 'gurus', 'missingGurus', 'status'));
     }
 
-    public function export()
+    public function export(SpreadsheetExportService $excel)
     {
         $query = Attendance::with('guru');
 
@@ -35,33 +62,34 @@ class AttendanceController extends Controller
 
         $attendances = $query->orderBy('tanggal', 'desc')->get();
 
-        $headers = [
-            'Content-Type' => 'text/csv',
-            'Content-Disposition' => 'attachment; filename="absensi_' . now()->format('Y-m-d') . '.csv"',
+        $statusLabels = [
+            'hadir' => 'Hadir', 'terlambat' => 'Terlambat', 'izin' => 'Izin',
+            'sakit' => 'Sakit', 'alpha' => 'TAK', 'tugas_luar' => 'Tugas Luar',
+            'tidak_ada_keterangan' => 'TAK',
         ];
 
-        $callback = function () use ($attendances) {
-            $file = fopen('php://output', 'w');
-            fputcsv($file, ['No', 'Nama', 'NIP', 'Tanggal', 'Status', 'Jam Masuk', 'Jam Pulang', 'Keterangan']);
+        $rows = [];
+        foreach ($attendances as $index => $att) {
+            $rows[] = [
+                $index + 1,
+                $att->guru->name ?? '-',
+                $att->guru->username ?? '-',
+                $att->tanggal,
+                $statusLabels[$att->status] ?? $att->status,
+                $att->jam_masuk ?? '-',
+                $att->jam_pulang ?? '-',
+                $att->keterangan ?? '-',
+            ];
+        }
 
-            $no = 1;
-            foreach ($attendances as $att) {
-                fputcsv($file, [
-                    $no++,
-                    $att->guru->name ?? '-',
-                    $att->guru->username ?? '-',
-                    $att->tanggal,
-                    ucfirst($att->status),
-                    $att->jam_masuk ?? '-',
-                    $att->jam_pulang ?? '-',
-                    $att->keterangan ?? '-',
-                ]);
-            }
+        AuditLogService::log('export', 'absensi', 'Export data absensi ke XLSX: ' . count($rows) . ' data');
 
-            fclose($file);
-        };
-
-        return response()->stream($callback, 200, $headers);
+        return $excel->download(
+            'absensi_' . now()->format('Y-m-d') . '.xlsx',
+            ['No', 'Nama', 'NIP', 'Tanggal', 'Status', 'Jam Masuk', 'Jam Pulang', 'Keterangan'],
+            $rows,
+            'Data Absensi'
+        );
     }
 
     public function show($id)

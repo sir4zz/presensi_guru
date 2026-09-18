@@ -15,37 +15,37 @@
         </x-button>
         <x-button variant="secondary" id="reportExportBtn">
             <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
-            Export CSV
+            Export XLSX
         </x-button>
     </div>
 </div>
 
 <div class="filter-bar">
-    <select class="form-select" id="monthFilter">
-        @foreach(range(1, 12) as $month)
-            <option value="{{ $month }}" {{ $month == date('m') ? 'selected' : '' }}>{{ Carbon\Carbon::create()->month($month)->translatedFormat('F') }}</option>
+    <select class="form-select" id="monthFilter" onchange="applyReportFilters()">
+        @foreach(range(1, 12) as $m)
+            <option value="{{ $m }}" {{ $m == $month ? 'selected' : '' }}>{{ Carbon\Carbon::create()->month($m)->translatedFormat('F') }}</option>
         @endforeach
     </select>
-    <select class="form-select" id="yearFilter">
-        @foreach(range(date('Y') - 2, date('Y') + 1) as $year)
-            <option value="{{ $year }}" {{ $year == date('Y') ? 'selected' : '' }}>{{ $year }}</option>
+    <select class="form-select" id="yearFilter" onchange="applyReportFilters()">
+        @foreach(range(date('Y') - 2, date('Y') + 1) as $y)
+            <option value="{{ $y }}" {{ $y == $year ? 'selected' : '' }}>{{ $y }}</option>
         @endforeach
     </select>
-    <select class="form-select" id="guruFilter">
+    <select class="form-select" id="guruFilter" onchange="applyReportFilters()">
         <option value="">Semua Guru</option>
-        @if(isset($gurus))
-            @foreach($gurus as $guru)
+        @if(isset($allGurus))
+            @foreach($allGurus as $guru)
                 <option value="{{ $guru->id }}" {{ request('guru_id') == $guru->id ? 'selected' : '' }}>{{ $guru->name }}</option>
             @endforeach
         @endif
     </select>
-    <select class="form-select" id="statusFilter">
+    <select class="form-select" id="statusFilter" onchange="applyReportFilters()">
         <option value="">Semua Status</option>
-        <option value="hadir">Hadir</option>
-        <option value="terlambat">Terlambat</option>
-        <option value="izin">Izin</option>
-        <option value="sakit">Sakit</option>
-        <option value="tidak_ada_keterangan">TAK</option>
+        <option value="hadir" {{ request('status') == 'hadir' ? 'selected' : '' }}>Hadir</option>
+        <option value="terlambat" {{ request('status') == 'terlambat' ? 'selected' : '' }}>Terlambat</option>
+        <option value="izin" {{ request('status') == 'izin' ? 'selected' : '' }}>Izin</option>
+        <option value="sakit" {{ request('status') == 'sakit' ? 'selected' : '' }}>Sakit</option>
+        <option value="tidak_ada_keterangan" {{ request('status') == 'tidak_ada_keterangan' ? 'selected' : '' }}>TAK</option>
     </select>
 </div>
 
@@ -123,10 +123,22 @@
 
 @push('scripts')
 <script>
+function applyReportFilters() {
+    const params = new URLSearchParams();
+    params.set('month', document.getElementById('monthFilter').value);
+    params.set('year', document.getElementById('yearFilter').value);
+    const guruId = document.getElementById('guruFilter').value;
+    const status = document.getElementById('statusFilter').value;
+    if (guruId) params.set('guru_id', guruId);
+    if (status) params.set('status', status);
+    window.location.href = '{{ route("admin.report.index") }}?' + params.toString();
+}
+
 document.getElementById('reportExportBtn').addEventListener('click', function() {
-    const month = document.getElementById('monthFilter').value;
-    const year = document.getElementById('yearFilter').value;
-    window.location.href = '{{ route("admin.report.export") }}?month=' + month + '&year=' + year;
+    const params = new URLSearchParams(window.location.search);
+    if (!params.get('month')) params.set('month', document.getElementById('monthFilter').value);
+    if (!params.get('year')) params.set('year', document.getElementById('yearFilter').value);
+    window.location.href = '{{ route("admin.report.export") }}?' + params.toString();
 });
 </script>
 @endpush

@@ -4,6 +4,19 @@
 @section('page-title', 'Kalender Absensi')
 
 @section('content')
+<div class="filter-bar">
+    <select class="form-select" id="monthFilter" style="max-width: 200px;">
+        @foreach(range(1, 12) as $m)
+            <option value="{{ $m }}" {{ $m == $month ? 'selected' : '' }}>{{ Carbon\Carbon::create()->month($m)->translatedFormat('F') }}</option>
+        @endforeach
+    </select>
+    <select class="form-select" id="yearFilter" style="max-width: 120px;">
+        @foreach(range(date('Y') - 2, date('Y') + 1) as $y)
+            <option value="{{ $y }}" {{ $y == $year ? 'selected' : '' }}>{{ $y }}</option>
+        @endforeach
+    </select>
+</div>
+
 <div class="calendar-admin-layout">
     <div class="calendar-main">
         <div class="calendar-nav">
@@ -20,17 +33,17 @@
         </div>
 
         <div class="calendar-grid admin-calendar" id="calendarGrid">
+            <div class="calendar-header sunday">Min</div>
             <div class="calendar-header">Sen</div>
             <div class="calendar-header">Sel</div>
             <div class="calendar-header">Rab</div>
             <div class="calendar-header">Kam</div>
             <div class="calendar-header">Jum</div>
             <div class="calendar-header">Sab</div>
-            <div class="calendar-header">Min</div>
         </div>
 
         <div class="calendar-legend" style="margin-top: var(--space-4);">
-            <div class="calendar-legend-item"><span class="calendar-dot-legend" style="background:var(--color-danger);"></span> Libur/Akhir Pekan</div>
+            <div class="calendar-legend-item"><span class="calendar-dot-legend" style="background:var(--color-danger);"></span> Minggu/Libur</div>
             <div class="calendar-legend-item"><span class="calendar-dot-legend" style="background:var(--color-success);"></span> Hadir</div>
             <div class="calendar-legend-item"><span class="calendar-dot-legend" style="background:var(--color-warning);"></span> Terlambat</div>
             <div class="calendar-legend-item"><span class="calendar-dot-legend" style="background:var(--color-info);"></span> Izin</div>
@@ -79,10 +92,16 @@
         <div class="card">
             <div class="card-header">
                 <h3 class="card-title">Hari Libur</h3>
-                <button class="btn btn-sm btn-primary" id="addHolidayBtn">
-                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
-                    Tambah
-                </button>
+                <div style="display:flex; gap:var(--space-2);">
+                    <button class="btn btn-sm btn-secondary" id="syncHolidayBtn" title="Ambil libur nasional otomatis dari API">
+                        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="23 4 23 10 17 10"/><polyline points="1 20 1 14 7 14"/><path d="M3.51 9a9 9 0 0 1 14.85-3.36L23 10M1 14l4.64 4.36A9 9 0 0 0 20.49 15"/></svg>
+                        Sinkron
+                    </button>
+                    <button class="btn btn-sm btn-primary" id="addHolidayBtn">
+                        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
+                        Tambah
+                    </button>
+                </div>
             </div>
             <div id="holidayList">
                 @forelse($holidayMap as $date => $holiday)
@@ -161,6 +180,16 @@
 
     var month = {{ $month }};
     var year = {{ $year }};
+    var calendarBaseUrl = '{{ route("admin.calendar.index") }}';
+
+    document.getElementById('monthFilter').addEventListener('change', applyMonthYearFilter);
+    document.getElementById('yearFilter').addEventListener('change', applyMonthYearFilter);
+
+    function applyMonthYearFilter() {
+        var m = document.getElementById('monthFilter').value;
+        var y = document.getElementById('yearFilter').value;
+        window.location.href = calendarBaseUrl + '?month=' + m + '&year=' + y;
+    }
 
     function renderCalendar() {
         var existingDays = calendarGrid.querySelectorAll('.calendar-day');
@@ -170,7 +199,9 @@
         var daysInMonth = new Date(year, month, 0).getDate();
         var today = new Date();
 
-        var offset = firstDay === 0 ? 6 : firstDay - 1;
+        // Kalender dinding Indonesia: minggu dimulai hari Minggu (Min).
+        // getDay(): 0=Minggu..6=Sabtu, jadi offset = firstDay.
+        var offset = firstDay;
 
         for (var i = 0; i < offset; i++) {
             var emptyDay = document.createElement('div');
@@ -182,14 +213,14 @@
             var dateStr = year + '-' + String(month).padStart(2, '0') + '-' + String(day).padStart(2, '0');
             var dateObj = new Date(year, month - 1, day);
             var dayOfWeek = dateObj.getDay();
-            var isWeekend = dayOfWeek === 0 || dayOfWeek === 6;
+            var isSunday = dayOfWeek === 0;
             var isHoliday = holidayMap[dateStr] !== undefined;
             var isToday = today.getDate() === day && today.getMonth() + 1 === month && today.getFullYear() === year;
 
             var dayEl = document.createElement('button');
             dayEl.type = 'button';
             dayEl.className = 'calendar-day';
-            if (isWeekend) dayEl.classList.add('weekend');
+            if (isSunday) dayEl.classList.add('sunday');
             if (isHoliday) dayEl.classList.add('has-holiday');
             if (isToday) dayEl.classList.add('today');
 
@@ -207,6 +238,7 @@
                 if (att.izin > 0) html += '<span class="cs cs-izin">' + att.izin + '</span>';
                 if (att.sakit > 0) html += '<span class="cs cs-sakit">' + att.sakit + '</span>';
                 if (att.alpha > 0) html += '<span class="cs cs-alpha">' + att.alpha + '</span>';
+                if (att.tugas_luar > 0) html += '<span class="cs cs-tugas-luar">' + att.tugas_luar + '</span>';
                 html += '</div>';
             }
 
@@ -244,8 +276,8 @@
                     html += '<th>Guru</th><th>NIP</th><th>Status</th><th>Masuk</th><th>Pulang</th><th>Jarak</th><th>Foto</th>';
                     html += '</tr></thead><tbody>';
                     data.attendances.forEach(function(a) {
-                        var statusBadge = { hadir: 'success', terlambat: 'warning', izin: 'info', sakit: 'danger', alpha: 'danger', tidak_ada_keterangan: 'danger' };
-                        var statusLabel = { hadir: 'Hadir', terlambat: 'Terlambat', izin: 'Izin', sakit: 'Sakit', alpha: 'TAK', tidak_ada_keterangan: 'TAK' };
+                        var statusBadge = { hadir: 'success', terlambat: 'warning', izin: 'info', sakit: 'danger', alpha: 'danger', tugas_luar: 'info', tidak_ada_keterangan: 'danger' };
+                        var statusLabel = { hadir: 'Hadir', terlambat: 'Terlambat', izin: 'Izin', sakit: 'Sakit', alpha: 'TAK', tugas_luar: 'Tugas Luar', tidak_ada_keterangan: 'TAK' };
                         html += '<tr>';
                         html += '<td class="font-medium">' + (a.guru_name || '-') + '</td>';
                         html += '<td class="text-muted">' + (a.nip || '-') + '</td>';
@@ -272,6 +304,41 @@
         holidayModal.querySelector('.card-title, .modal-title, h3').textContent = 'Tambah Hari Libur';
         holidayModal.classList.add('active');
     });
+
+    var syncBtn = document.getElementById('syncHolidayBtn');
+    if (syncBtn) {
+        syncBtn.addEventListener('click', function() {
+            if (!confirm('Sinkronkan libur nasional tahun ' + year + ' dari API? Data manual (daerah/sekolah) tidak akan ditimpa.')) return;
+            syncBtn.disabled = true;
+            var originalText = syncBtn.innerHTML;
+            syncBtn.innerHTML = 'Menyinkron...';
+            fetch('{{ route("admin.holiday.sync") }}', {
+                method: 'POST',
+                headers: {
+                    'X-CSRF-TOKEN': csrfToken,
+                    'Accept': 'application/json',
+                    'Content-Type': 'application/json'
+                },
+                body: JSON.stringify({ year: year })
+            })
+            .then(function(r) { return r.json(); })
+            .then(function(data) {
+                if (data.success) {
+                    alert(data.message || 'Sinkronisasi berhasil.');
+                    window.location.reload();
+                } else {
+                    alert(data.message || 'Sinkronisasi gagal.');
+                    syncBtn.disabled = false;
+                    syncBtn.innerHTML = originalText;
+                }
+            })
+            .catch(function(err) {
+                alert('Terjadi kesalahan jaringan: ' + err.message);
+                syncBtn.disabled = false;
+                syncBtn.innerHTML = originalText;
+            });
+        });
+    }
 
     window.editHoliday = function(h) {
         holidayForm.action = '{{ route("admin.holiday.index") }}/' + h.id;

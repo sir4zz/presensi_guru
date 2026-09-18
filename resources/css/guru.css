@@ -479,6 +479,10 @@
     color: var(--color-text-muted);
 }
 
+.calendar-header.sunday {
+    color: var(--color-danger);
+}
+
 .calendar-day {
     aspect-ratio: 1;
     display: flex;
@@ -523,7 +527,10 @@
 .calendar-dot.terlambat { background-color: var(--color-warning); }
 .calendar-dot.izin { background-color: var(--color-info); }
 .calendar-dot.sakit { background-color: var(--color-danger); }
+.calendar-dot.alpha { background-color: var(--color-danger); }
 .calendar-dot.tak { background-color: var(--color-danger); }
+.calendar-dot.tugas_luar { background-color: var(--color-info); }
+.calendar-dot.tidak_ada_keterangan { background-color: var(--color-danger); }
 
 .calendar-nav {
     display: flex;
@@ -555,7 +562,18 @@
     background-color: color-mix(in srgb, var(--color-danger-light) 80%, var(--color-danger));
 }
 
+/* Kalender dinding: hari Minggu berwarna merah. */
+.calendar-day.sunday {
+    background-color: var(--color-danger-light);
+    color: var(--color-danger);
+}
+
+.calendar-day.sunday:hover {
+    background-color: color-mix(in srgb, var(--color-danger-light) 80%, var(--color-danger));
+}
+
 .calendar-day.today.weekend,
+.calendar-day.today.sunday,
 .calendar-day.today.has-holiday {
     background-color: color-mix(in srgb, var(--color-danger-light) 60%, var(--color-primary-light));
     border: 2px solid var(--color-primary-border);

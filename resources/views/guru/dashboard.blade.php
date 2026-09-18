@@ -12,16 +12,27 @@
 <div class="status-card {{ $todayAttendance?->status ?? 'belum' }}" style="margin-bottom: var(--space-6);">
     <div class="status-card-date">{{ now()->translatedFormat('l, d F Y') }}</div>
     @if(isset($todayAttendance) && $todayAttendance)
-        @if($todayAttendance->status === 'hadir' || $todayAttendance->status === 'terlambat')
+        @if($todayAttendance->jam_masuk && ($todayAttendance->status === 'hadir' || $todayAttendance->status === 'terlambat'))
             <div class="status-card-status">{{ ucfirst($todayAttendance->status) }}</div>
             <div class="status-card-time">
                 Masuk: {{ \Carbon\Carbon::parse($todayAttendance->jam_masuk)->format('H:i') }}
                 @if($todayAttendance->jam_pulang)
                     | Pulang: {{ \Carbon\Carbon::parse($todayAttendance->jam_pulang)->format('H:i') }}
+                @else
+                    | Pulang: belum dilakukan
                 @endif
             </div>
             @if(!$todayAttendance->jam_pulang)
-                <a href="{{ route('guru.attendance.create') }}" class="btn btn-primary attendance-btn">Absen Pulang</a>
+                @if($canCheckout ?? false)
+                    <a href="{{ route('guru.attendance.create') }}" class="btn btn-primary attendance-btn">Absen Pulang</a>
+                    <p style="margin-top: var(--space-2); font-size: var(--text-sm); color: var(--color-text-muted);">Jendela pulang: {{ $checkoutStart ?? '15:00' }}–{{ $checkoutEnd ?? '17:00' }} WIB</p>
+                @elseif(($checkoutStatus ?? '') === 'too_early')
+                    <button class="btn btn-primary attendance-btn" disabled aria-disabled="true" title="Absensi pulang belum dibuka" style="opacity:.55; cursor:not-allowed;">Absen Pulang</button>
+                    <p style="margin-top: var(--space-2); font-size: var(--text-sm); color: var(--color-text-muted);">Absensi pulang mulai pukul {{ $checkoutStart ?? '15:00' }} WIB.</p>
+                @else
+                    <button class="btn btn-primary attendance-btn" disabled aria-disabled="true" title="Waktu absensi sudah berakhir" style="opacity:.55; cursor:not-allowed;">Absen Pulang</button>
+                    <p style="margin-top: var(--space-2); font-size: var(--text-sm); color: var(--color-text-muted);">Waktu absensi pulang sudah berakhir (batas {{ $checkoutEnd ?? '17:00' }} WIB).</p>
+                @endif
             @endif
         @elseif($todayAttendance->status === 'izin')
             <div class="status-card-status">Izin</div>
@@ -35,8 +46,13 @@
         @endif
     @else
         <div class="status-card-status">Belum Absen</div>
-        <div class="status-card-time">Anda belum melakukan absensi hari ini</div>
-        <a href="{{ route('guru.attendance.create') }}" class="btn btn-primary attendance-btn">Absen Sekarang</a>
+        @if($redDate['is_red'] ?? false)
+            <div class="status-card-time">Sistem absensi ditutup. Hari ini {{ $redDate['reason'] }}.</div>
+            <button class="btn btn-primary attendance-btn" disabled aria-disabled="true" title="Absensi ditutup" style="opacity:.55; cursor:not-allowed;">Absen Sekarang</button>
+        @else
+            <div class="status-card-time">Anda belum melakukan absensi hari ini</div>
+            <a href="{{ route('guru.attendance.create') }}" class="btn btn-primary attendance-btn">Absen Sekarang</a>
+        @endif
     @endif
 </div>
 

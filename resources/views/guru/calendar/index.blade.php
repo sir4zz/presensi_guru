@@ -4,6 +4,19 @@
 @section('page-title', 'Kalender')
 
 @section('content')
+<div class="filter-bar" style="padding: var(--space-3); margin-bottom: var(--space-4);">
+    <select class="form-select" id="monthFilter" style="max-width: 200px;">
+        @foreach(range(1, 12) as $m)
+            <option value="{{ $m }}" {{ $m == $month ? 'selected' : '' }}>{{ Carbon\Carbon::create()->month($m)->translatedFormat('F') }}</option>
+        @endforeach
+    </select>
+    <select class="form-select" id="yearFilter" style="max-width: 120px;">
+        @foreach(range(date('Y') - 2, date('Y') + 1) as $y)
+            <option value="{{ $y }}" {{ $y == $year ? 'selected' : '' }}>{{ $y }}</option>
+        @endforeach
+    </select>
+</div>
+
 <div class="calendar-nav">
     <a href="{{ $prevUrl }}" class="btn btn-ghost btn-icon">
         <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="15 18 9 12 15 6"/></svg>
@@ -18,7 +31,7 @@
 </div>
 
 <div class="calendar-grid" id="calendarGrid">
-    <div class="calendar-header">Min</div>
+    <div class="calendar-header sunday">Min</div>
     <div class="calendar-header">Sen</div>
     <div class="calendar-header">Sel</div>
     <div class="calendar-header">Rab</div>
@@ -82,6 +95,16 @@
 
     var month = {{ $month }};
     var year = {{ $year }};
+    var calendarBaseUrl = '{{ route("guru.calendar.index") }}';
+
+    document.getElementById('monthFilter').addEventListener('change', applyMonthYearFilter);
+    document.getElementById('yearFilter').addEventListener('change', applyMonthYearFilter);
+
+    function applyMonthYearFilter() {
+        var m = document.getElementById('monthFilter').value;
+        var y = document.getElementById('yearFilter').value;
+        window.location.href = calendarBaseUrl + '?month=' + m + '&year=' + y;
+    }
 
     function renderCalendar() {
         var existingDays = calendarGrid.querySelectorAll('.calendar-day');
@@ -91,6 +114,8 @@
         var daysInMonth = new Date(year, month, 0).getDate();
         var today = new Date();
 
+        // Kalender dinding Indonesia: minggu dimulai hari Minggu (Min).
+        // getDay(): 0=Minggu..6=Sabtu, jadi offset = firstDay.
         for (var i = 0; i < firstDay; i++) {
             var emptyDay = document.createElement('div');
             emptyDay.className = 'calendar-day empty';
@@ -105,23 +130,23 @@
             var dateStr = year + '-' + String(month).padStart(2, '0') + '-' + String(day).padStart(2, '0');
             var dateObj = new Date(year, month - 1, day);
             var dayOfWeek = dateObj.getDay();
-            var isWeekend = dayOfWeek === 0 || dayOfWeek === 6;
+            var isSunday = dayOfWeek === 0;
             var isHoliday = holidayMap[dateStr] !== undefined;
 
-            if (isWeekend) dayEl.classList.add('weekend');
+            if (isSunday) dayEl.classList.add('sunday');
             if (isHoliday) dayEl.classList.add('has-holiday');
 
             if (today.getDate() === day && today.getMonth() + 1 === month && today.getFullYear() === year) {
                 dayEl.classList.add('today');
             }
 
-            var html = '<span>' + day + '</span>';
+            var html = '<span class="calendar-day-num">' + day + '</span>';
 
             if (isHoliday) {
                 html += '<span class="calendar-holiday-dot"></span>';
             }
 
-            var att = attendanceData.find(function(a) { return a.tanggal === dateStr; });
+            var att = attendanceData[dateStr] || null;
             if (att) {
                 html += '<div class="calendar-dot ' + att.status + '"></div>';
             }
@@ -152,8 +177,8 @@
         }
 
         if (att) {
-            var statusBadge = { hadir: 'success', terlambat: 'warning', izin: 'info', sakit: 'danger' };
-            var statusLabel = { hadir: 'Hadir', terlambat: 'Terlambat', izin: 'Izin', sakit: 'Sakit', alpha: 'TAK', tidak_ada_keterangan: 'TAK' };
+            var statusBadge = { hadir: 'success', terlambat: 'warning', izin: 'info', sakit: 'danger', alpha: 'danger', tugas_luar: 'info', tidak_ada_keterangan: 'danger' };
+            var statusLabel = { hadir: 'Hadir', terlambat: 'Terlambat', izin: 'Izin', sakit: 'Sakit', alpha: 'TAK', tugas_luar: 'Tugas Luar', tidak_ada_keterangan: 'TAK' };
             html += '<div style="display: flex; flex-direction: column; gap: var(--space-3);">';
             html += '<div style="display: flex; align-items: center; gap: var(--space-2);">';
             html += '<span style="font-size: var(--text-sm); color: var(--color-text-muted); min-width: 80px;">Status</span>';
