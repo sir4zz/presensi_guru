@@ -131,6 +131,144 @@
     gap: var(--space-5);
 }
 
+.attendance-section {
+    display: flex;
+    flex-direction: column;
+    gap: var(--space-3);
+}
+
+.attendance-section-title {
+    display: flex;
+    align-items: center;
+    gap: var(--space-2);
+    font-size: var(--text-sm);
+    font-weight: 600;
+    color: var(--color-text);
+}
+
+/* Step Progress */
+.step-progress {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 0;
+    padding: var(--space-4) 0;
+}
+
+.step-progress-item {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: var(--space-1);
+}
+
+.step-progress-item span {
+    font-size: var(--text-xs);
+    color: var(--color-text-muted);
+}
+
+.step-progress-item.active span {
+    color: var(--color-primary);
+    font-weight: 600;
+}
+
+.step-progress-item.done span {
+    color: var(--color-success);
+}
+
+.step-progress-dot {
+    width: 28px;
+    height: 28px;
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: var(--text-xs);
+    font-weight: 600;
+    background-color: var(--color-surface-muted);
+    color: var(--color-text-muted);
+    border: 2px solid var(--color-border-light);
+}
+
+.step-progress-item.active .step-progress-dot {
+    background-color: var(--color-primary);
+    color: #fff;
+    border-color: var(--color-primary);
+}
+
+.step-progress-item.done .step-progress-dot {
+    background-color: var(--color-success);
+    color: #fff;
+    border-color: var(--color-success);
+}
+
+.step-progress-line {
+    width: 32px;
+    height: 2px;
+    background-color: var(--color-border-light);
+    margin: 0 var(--space-1);
+    margin-bottom: 18px;
+}
+
+.step-progress-line.active {
+    background-color: var(--color-primary);
+}
+
+.step-progress-line.done {
+    background-color: var(--color-success);
+}
+
+/* Step Loading */
+.step-loading {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: var(--space-2);
+    padding: var(--space-3);
+    font-size: var(--text-sm);
+    color: var(--color-text-muted);
+}
+
+/* Step Ready Card */
+.step-ready-card {
+    background-color: var(--color-surface);
+    border: 1px solid var(--color-border-light);
+    border-radius: var(--radius-xl);
+    padding: var(--space-5);
+}
+
+.step-ready-title {
+    font-size: var(--text-lg);
+    font-weight: 600;
+    text-align: center;
+    margin-bottom: var(--space-4);
+}
+
+.step-ready-row {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: var(--space-2) 0;
+    border-bottom: 1px solid var(--color-border-light);
+    font-size: var(--text-sm);
+}
+
+.step-ready-row:last-child {
+    border-bottom: none;
+}
+
+.step-ready-ok {
+    display: flex;
+    align-items: center;
+    gap: var(--space-1);
+    font-weight: 600;
+    color: var(--color-success);
+}
+
+.step-ready-value {
+    font-weight: 600;
+}
+
 .attendance-camera {
     position: relative;
     width: 100%;
@@ -147,7 +285,7 @@
     object-fit: cover;
 }
 
-.attendance-camera-placeholder {
+.attendance-camera-overlay {
     position: absolute;
     inset: 0;
     display: flex;
@@ -156,11 +294,26 @@
     justify-content: center;
     color: var(--color-text-light);
     gap: var(--space-3);
+    cursor: pointer;
 }
 
-.attendance-camera-placeholder svg {
-    width: 48px;
-    height: 48px;
+.attendance-camera-overlay span {
+    font-size: var(--text-sm);
+}
+
+.attendance-camera-actions {
+    display: flex;
+    gap: var(--space-2);
+    justify-content: center;
+}
+
+.attendance-camera-error {
+    font-size: var(--text-sm);
+    color: var(--color-danger);
+    text-align: center;
+    padding: var(--space-3);
+    background: var(--color-danger-light);
+    border-radius: var(--radius-lg);
 }
 
 .attendance-info {
@@ -200,6 +353,62 @@
     padding: 14px;
     font-size: var(--text-base);
     font-weight: 600;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: var(--space-2);
+}
+
+/* GPS Status */
+.gps-status-card {
+    display: flex;
+    flex-direction: column;
+    gap: var(--space-2);
+    padding: var(--space-4);
+    background-color: var(--color-surface);
+    border: 1px solid var(--color-border-light);
+    border-radius: var(--radius-xl);
+}
+
+.gps-status-row {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+}
+
+.gps-status-label {
+    font-size: var(--text-sm);
+    color: var(--color-text-muted);
+}
+
+.gps-status-indicator {
+    display: flex;
+    align-items: center;
+}
+
+.gps-distance {
+    font-size: var(--text-sm);
+    font-weight: 600;
+}
+
+.gps-radius {
+    font-size: var(--text-sm);
+    font-weight: 500;
+    color: var(--color-text-muted);
+}
+
+.gps-spinner {
+    display: inline-block;
+    width: 16px;
+    height: 16px;
+    border: 2px solid var(--color-border-light);
+    border-top-color: var(--color-primary);
+    border-radius: 50%;
+    animation: spin 0.6s linear infinite;
+}
+
+@keyframes spin {
+    to { transform: rotate(360deg); }
 }
 
 /* ========================================
@@ -270,6 +479,10 @@
     color: var(--color-text-muted);
 }
 
+.calendar-header.sunday {
+    color: var(--color-danger);
+}
+
 .calendar-day {
     aspect-ratio: 1;
     display: flex;
@@ -314,7 +527,10 @@
 .calendar-dot.terlambat { background-color: var(--color-warning); }
 .calendar-dot.izin { background-color: var(--color-info); }
 .calendar-dot.sakit { background-color: var(--color-danger); }
+.calendar-dot.alpha { background-color: var(--color-danger); }
 .calendar-dot.tak { background-color: var(--color-danger); }
+.calendar-dot.tugas_luar { background-color: var(--color-info); }
+.calendar-dot.tidak_ada_keterangan { background-color: var(--color-danger); }
 
 .calendar-nav {
     display: flex;
@@ -326,6 +542,60 @@
 .calendar-nav-title {
     font-size: var(--text-lg);
     font-weight: 600;
+}
+
+.calendar-day.has-holiday {
+    background-color: var(--color-danger-light);
+    color: var(--color-danger);
+}
+
+.calendar-day.has-holiday:hover {
+    background-color: color-mix(in srgb, var(--color-danger-light) 80%, var(--color-danger));
+}
+
+.calendar-day.weekend {
+    background-color: var(--color-danger-light);
+    color: var(--color-danger);
+}
+
+.calendar-day.weekend:hover {
+    background-color: color-mix(in srgb, var(--color-danger-light) 80%, var(--color-danger));
+}
+
+/* Kalender dinding: hari Minggu berwarna merah. */
+.calendar-day.sunday {
+    background-color: var(--color-danger-light);
+    color: var(--color-danger);
+}
+
+.calendar-day.sunday:hover {
+    background-color: color-mix(in srgb, var(--color-danger-light) 80%, var(--color-danger));
+}
+
+.calendar-day.today.weekend,
+.calendar-day.today.sunday,
+.calendar-day.today.has-holiday {
+    background-color: color-mix(in srgb, var(--color-danger-light) 60%, var(--color-primary-light));
+    border: 2px solid var(--color-primary-border);
+    color: var(--color-danger);
+}
+
+.calendar-holiday-dot {
+    width: 5px;
+    height: 5px;
+    border-radius: 50%;
+    background-color: var(--color-danger);
+}
+
+.holiday-banner {
+    display: flex;
+    align-items: center;
+    gap: var(--space-2);
+    padding: var(--space-3);
+    background: var(--color-danger-light);
+    border-radius: var(--radius-lg);
+    font-size: var(--text-sm);
+    margin-bottom: var(--space-3);
 }
 
 /* ========================================

@@ -8,6 +8,7 @@ use App\Http\Requests\Admin\UpdateGuruRequest;
 use App\Models\GuruProfile;
 use App\Models\User;
 use App\Services\AuditLogService;
+use App\Services\SpreadsheetExportService;
 use Illuminate\Support\Facades\Hash;
 use Illuminate\Support\Facades\Storage;
 
@@ -176,6 +177,32 @@ class GuruController extends Controller
         AuditLogService::log('import', 'guru', "Import guru dari CSV: {$imported} berhasil, {$skipped} dilewati");
 
         return redirect()->route('admin.guru.index')->with('success', "Import selesai: {$imported} guru berhasil diimport, {$skipped} dilewati.");
+    }
+
+    public function export(SpreadsheetExportService $excel)
+    {
+        $gurus = User::where('role', 'guru')->with('guruProfile')->orderBy('name')->get();
+
+        $rows = [];
+        foreach ($gurus as $index => $guru) {
+            $rows[] = [
+                $index + 1,
+                $guru->name,
+                $guru->username,
+                $guru->guruProfile?->nipppk ?? '-',
+                $guru->guruProfile?->jabatan ?? '-',
+                $guru->status === 'aktif' ? 'Aktif' : 'Nonaktif',
+            ];
+        }
+
+        AuditLogService::log('export', 'guru', 'Export data guru ke XLSX: ' . count($rows) . ' data');
+
+        return $excel->download(
+            'data_guru_' . now()->format('Y-m-d') . '.xlsx',
+            ['No', 'Nama', 'NIP', 'NIPPPK', 'Jabatan', 'Status'],
+            $rows,
+            'Data Guru'
+        );
     }
 
     private function extractProfileData(array $validated): array

@@ -16,8 +16,22 @@ class StoreAttendanceRequest extends FormRequest
         return [
             'latitude' => 'required|numeric|between:-90,90',
             'longitude' => 'required|numeric|between:-180,180',
-            'distance' => 'nullable|numeric|min:0',
-            'selfie' => 'nullable|image|max:2048',
+            'accuracy' => 'nullable|numeric|min:0',
+            'selfie' => 'required|image|mimes:jpeg,jpg,png|max:2048',
+        ];
+    }
+
+    public function messages(): array
+    {
+        return [
+            'latitude.required' => 'Lokasi GPS diperlukan.',
+            'latitude.between' => 'Latitude tidak valid.',
+            'longitude.required' => 'Lokasi GPS diperlukan.',
+            'longitude.between' => 'Longitude tidak valid.',
+            'selfie.required' => 'Foto selfie wajib diambil.',
+            'selfie.image' => 'File harus berupa gambar.',
+            'selfie.mimes' => 'Format gambar harus JPEG atau PNG.',
+            'selfie.max' => 'Ukuran gambar maksimal 2MB.',
         ];
     }
 }

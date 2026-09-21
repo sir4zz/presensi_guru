@@ -5,18 +5,30 @@ namespace App\Http\Controllers\Admin;
 use App\Http\Controllers\Controller;
 use App\Models\Attendance;
 use App\Models\User;
+use App\Services\AuditLogService;
+use App\Services\SpreadsheetExportService;
 
 class ReportController extends Controller
 {
     public function index()
     {
         $gurus = User::where('role', 'guru')->get();
-        $month = request('month', now()->month);
-        $year = request('year', now()->year);
+        $month = min(12, max(1, (int) request('month', now()->month)));
+        $year = min(2100, max(2000, (int) request('year', now()->year)));
+        $guruId = request('guru_id');
+        $status = request('status');
 
         $attendances = Attendance::whereMonth('tanggal', $month)
             ->whereYear('tanggal', $year)
+            ->when($guruId, fn ($q) => $q->where('guru_id', $guruId))
+            ->when($status, fn ($q) => $q->where('status', $status))
             ->get();
+
+        if ($guruId) {
+            $gurus = $gurus->where('id', (int) $guruId)->values();
+        }
+
+        $allGurus = User::where('role', 'guru')->get();
 
         $report = [
             'total_hari_kerja' => $attendances->pluck('tanggal')->unique()->count(),
@@ -42,54 +54,52 @@ class ReportController extends Controller
             }),
         ];
 
-        return view('admin.report.index', compact('gurus', 'report'));
+        return view('admin.report.index', compact('gurus', 'allGurus', 'report', 'month', 'year'));
     }
 
-    public function export()
+    public function export(SpreadsheetExportService $excel)
     {
-        $month = (int) request('month', now()->month);
-        $year = (int) request('year', now()->year);
+        $month = min(12, max(1, (int) request('month', now()->month)));
+        $year = min(2100, max(2000, (int) request('year', now()->year)));
         $gurus = User::where('role', 'guru')->with('guruProfile')->get();
+
+        if (request('guru_id')) {
+            $gurus = $gurus->where('id', (int) request('guru_id'))->values();
+        }
 
         $attendances = Attendance::whereMonth('tanggal', $month)
             ->whereYear('tanggal', $year)
+            ->when(request('guru_id'), fn ($q) => $q->where('guru_id', request('guru_id')))
+            ->when(request('status'), fn ($q) => $q->where('status', request('status')))
             ->get();
 
-        $monthName = now()->setMonth($month)->format('F Y');
+        $monthName = now()->locale('id')->month($month)->translatedFormat('F Y');
 
-        $headers = [
-            'Content-Type' => 'text/csv',
-            'Content-Disposition' => 'attachment; filename="laporan_absensi_' . $month . '_' . $year . '.csv"',
-        ];
+        $rows = [];
+        foreach ($gurus as $index => $g) {
+            $gAtt = $attendances->where('guru_id', $g->id);
+            $total = $gAtt->count();
+            $hadir = $gAtt->where('status', 'hadir')->count();
+            $rows[] = [
+                $index + 1,
+                $g->name,
+                $g->username,
+                $hadir,
+                $gAtt->where('status', 'terlambat')->count(),
+                $gAtt->where('status', 'izin')->count(),
+                $gAtt->where('status', 'sakit')->count(),
+                $gAtt->where('status', 'alpha')->count(),
+                $total > 0 ? round(($hadir / $total) * 100) . '%' : '0%',
+            ];
+        }
 
-        $callback = function () use ($gurus, $attendances, $monthName) {
-            $file = fopen('php://output', 'w');
-            fputcsv($file, ['Laporan Absensi Guru - ' . $monthName]);
-            fputcsv($file, []);
-            fputcsv($file, ['No', 'Nama', 'NIP', 'Hadir', 'Terlambat', 'Izin', 'Sakit', 'Alpha (TAK)', 'Persentase']);
+        AuditLogService::log('export', 'laporan', "Export laporan absensi {$monthName} ke XLSX");
 
-            $no = 1;
-            foreach ($gurus as $g) {
-                $gAtt = $attendances->where('guru_id', $g->id);
-                $total = $gAtt->count();
-                $hadir = $gAtt->where('status', 'hadir')->count();
-
-                fputcsv($file, [
-                    $no++,
-                    $g->name,
-                    $g->username,
-                    $hadir,
-                    $gAtt->where('status', 'terlambat')->count(),
-                    $gAtt->where('status', 'izin')->count(),
-                    $gAtt->where('status', 'sakit')->count(),
-                    $gAtt->where('status', 'alpha')->count(),
-                    $total > 0 ? round(($hadir / $total) * 100) . '%' : '0%',
-                ]);
-            }
-
-            fclose($file);
-        };
-
-        return response()->stream($callback, 200, $headers);
+        return $excel->download(
+            'laporan_absensi_' . $month . '_' . $year . '.xlsx',
+            ['No', 'Nama', 'NIP', 'Hadir', 'Terlambat', 'Izin', 'Sakit', 'Alpha (TAK)', 'Persentase'],
+            $rows,
+            'Laporan ' . $month . '-' . $year
+        );
     }
 }

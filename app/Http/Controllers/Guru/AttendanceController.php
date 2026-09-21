@@ -17,15 +17,42 @@ class AttendanceController extends Controller
     {
         $user = auth()->user();
         $todayAttendance = $user->attendances()->whereDate('tanggal', now()->toDateString())->first();
-        $settings = SchoolSetting::allAsArray();
+        $settings = $this->attendanceService->getSettings();
 
         $schoolSettings = (object) [
-            'latitude' => $settings['latitude'] ?? -6.2011,
-            'longitude' => $settings['longitude'] ?? 106.393,
-            'attendance_radius' => $settings['attendance_radius'] ?? 200,
+            'school_name' => $settings['school_name'] ?? 'SMKN 11 KABUPATEN TANGERANG',
+            'latitude' => (float) ($settings['latitude'] ?? -6.2011),
+            'longitude' => (float) ($settings['longitude'] ?? 106.393),
+            'attendance_radius' => (int) ($settings['attendance_radius'] ?? 200),
+            'max_accuracy' => 100,
         ];
 
-        return view('guru.attendance.create', compact('todayAttendance', 'schoolSettings'));
+        // Waktu server Asia/Jakarta (mengikuti config app.timezone).
+        $serverTimeFull = now()->format('H:i:s');
+        $serverTime = substr($serverTimeFull, 0, 5);
+        $lateUntil = substr((string) ($settings['late_until'] ?? '09:00'), 0, 5);
+        $canCheckIn = $serverTime <= $lateUntil;
+
+        // Jendela absensi pulang memakai checkout_start_time Admin s.d. 17:00.
+        $checkoutWindow = $this->attendanceService->getCheckoutWindow($serverTime);
+        $checkoutStart = $checkoutWindow['start'];
+        $checkoutEnd = $checkoutWindow['end'];
+        $checkoutStatus = $checkoutWindow['status'];
+        $canCheckout = $checkoutWindow['can_checkout'];
+
+        $isCheckIn = !$todayAttendance || !$todayAttendance->jam_masuk;
+        $hasCheckedOut = (bool) ($todayAttendance?->jam_pulang);
+
+        // Tanggal merah (Minggu/libur): sistem absensi ditutup.
+        $redDate = $this->attendanceService->isRedDate(now()->toDateString());
+
+        return view('guru.attendance.create', compact(
+            'todayAttendance', 'schoolSettings',
+            'canCheckIn', 'lateUntil',
+            'serverTime', 'serverTimeFull',
+            'checkoutStart', 'checkoutEnd', 'checkoutStatus', 'canCheckout',
+            'isCheckIn', 'hasCheckedOut', 'redDate'
+        ));
     }
 
     public function store(StoreAttendanceRequest $request)

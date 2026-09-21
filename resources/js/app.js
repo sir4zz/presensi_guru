@@ -14,7 +14,8 @@ import './bootstrap.js';
             headers: { 'X-Requested-With': 'XMLHttpRequest' },
             signal: ctrl.signal
         }).then(r => {
-            if (r.ok) return r.text();
+            const ct = r.headers.get('content-type') || '';
+            if (r.ok && ct.includes('text/html')) return r.text();
         }).then(html => {
             if (html) prefetchCache.set(href, html);
         }).catch(() => {});
@@ -76,6 +77,15 @@ import './bootstrap.js';
                 window.location.href = href;
                 return null;
             }
+            const ct = r.headers.get('content-type') || '';
+            if (!ct.includes('text/html')) {
+                // Bukan halaman HTML (mis. file unduhan): serahkan ke browser.
+                hideSkeleton();
+                hideProgress();
+                clearTimeout(skeletonTimer);
+                window.location.href = href;
+                return null;
+            }
             return r.text();
         }).then(html => {
             if (html) {
@@ -122,6 +132,7 @@ import './bootstrap.js';
     document.addEventListener('mouseover', function (e) {
         const a = e.target.closest('a[href]');
         if (!a) return;
+        if (a.hasAttribute('download')) return;
         const href = a.getAttribute('href');
         if (!href || href.startsWith('#') || href.startsWith('javascript:') || a.target === '_blank') return;
         if (href.startsWith('http') && !href.startsWith(window.location.origin)) return;
@@ -131,6 +142,7 @@ import './bootstrap.js';
     document.addEventListener('click', function (e) {
         const a = e.target.closest('a[href]');
         if (!a) return;
+        if (a.hasAttribute('download')) return;
         const href = a.getAttribute('href');
         if (!href || href.startsWith('#') || href.startsWith('javascript:') || a.target === '_blank') return;
         if (href.startsWith('http') && !href.startsWith(window.location.origin)) return;

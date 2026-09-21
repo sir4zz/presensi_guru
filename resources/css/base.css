@@ -40,6 +40,10 @@ a:hover {
     color: var(--color-primary-hover);
 }
 
+a.btn:hover {
+    color: inherit;
+}
+
 img {
     max-width: 100%;
     height: auto;
