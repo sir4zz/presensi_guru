@@ -45,7 +45,6 @@ class AttendanceController extends Controller
 
         // Tanggal merah (Minggu/libur): sistem absensi ditutup.
         $redDate = $this->attendanceService->isRedDate(now()->toDateString());
-
         return view('guru.attendance.create', compact(
             'todayAttendance', 'schoolSettings',
             'canCheckIn', 'lateUntil',

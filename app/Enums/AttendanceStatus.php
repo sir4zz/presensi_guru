@@ -9,6 +9,7 @@ enum AttendanceStatus: string
     case Izin = 'izin';
     case Sakit = 'sakit';
     case Alpha = 'alpha';
+    case DinasLuar = 'dinas_luar';
 
     public function label(): string
     {
@@ -18,6 +19,7 @@ enum AttendanceStatus: string
             self::Izin => 'Izin',
             self::Sakit => 'Sakit',
             self::Alpha => 'Tidak Ada Keterangan',
+            self::DinasLuar => 'Dinas Luar',
         };
     }
 
@@ -29,6 +31,7 @@ enum AttendanceStatus: string
             self::Izin => 'info',
             self::Sakit => 'danger',
             self::Alpha => 'danger',
+            self::DinasLuar => 'info',
         };
     }
 }

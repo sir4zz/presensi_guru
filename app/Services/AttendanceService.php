@@ -138,15 +138,11 @@ class AttendanceService
                 return ['success' => false, 'message' => 'Absensi pulang hanya untuk kehadiran masuk (Hadir/Terlambat).', 'code' => 422];
             }
 
-            // Validasi waktu server Asia/Jakarta: checkout_start_time (Admin) s.d. 17:00.
+            // Pulang sebelum checkout_start_time tetap diperbolehkan agar PS tercatat.
             $now = now(); // timezone mengikuti config app Asia/Jakarta
             $serverTime = $now->format('H:i');
             $checkoutStart = substr((string) ($this->settings['checkout_start_time'] ?? '15:00'), 0, 5);
             $checkoutEnd = substr(self::CHECKOUT_END_TIME, 0, 5);
-
-            if ($serverTime < $checkoutStart) {
-                return ['success' => false, 'message' => 'Absensi pulang belum dibuka. Mulai pukul ' . $checkoutStart . ' WIB.', 'code' => 422];
-            }
 
             if ($serverTime > $checkoutEnd) {
                 return ['success' => false, 'message' => 'Waktu absensi pulang sudah berakhir (batas ' . $checkoutEnd . ' WIB).', 'code' => 422];
@@ -245,6 +241,51 @@ class AttendanceService
         return $count;
     }
 
+    /** Ringkasan disiplin bulan berjalan (menit dan konversi hari). */
+    public function getDisciplineSummary(int $guruId, int $month, int $year): array
+    {
+        $start = sprintf('%04d-%02d-01', $year, $month);
+        $end = \Carbon\Carbon::create($year, $month, 1)->endOfMonth()->toDateString();
+        return $this->getDisciplineSummaryForRange($guruId, $start, $end);
+    }
+
+    /** Ringkasan disiplin untuk rentang tanggal, dipakai export bulanan/tahunan. */
+    public function getDisciplineSummaryForRange(int $guruId, string $startDate, string $endDate): array
+    {
+        $rows = Attendance::where('guru_id', $guruId)
+            ->whereBetween('tanggal', [$startDate, $endDate])
+            ->get();
+        $presentUntil = substr((string) $this->settings['present_until'], 0, 5);
+        $checkoutStart = substr((string) $this->settings['checkout_start_time'], 0, 5);
+        $lateMinutes = 0;
+        $earlyMinutes = 0;
+        foreach ($rows as $row) {
+            if ($row->status === AttendanceStatus::Terlambat->value && $row->jam_masuk) {
+                $lateMinutes += max(0, $this->minutesBetween($presentUntil, substr($row->jam_masuk, 0, 5)));
+            }
+            if ($row->jam_pulang) {
+                $earlyMinutes += max(0, $this->minutesBetween(substr($row->jam_pulang, 0, 5), $checkoutStart));
+            }
+        }
+        $alpha = $rows->where('status', AttendanceStatus::Alpha->value)->count();
+        $totalMinutes = $lateMinutes + $earlyMinutes;
+        return [
+            'terlambat_menit' => $lateMinutes,
+            'pulang_awal_menit' => $earlyMinutes,
+            'konversi_jam' => round($totalMinutes / 60, 2),
+            'konversi_hari' => round($totalMinutes / 60 / 7, 2),
+            'tmtb' => $alpha,
+            'total_hari' => round(($totalMinutes / 60 / 7) + $alpha, 2),
+        ];
+    }
+
+    protected function minutesBetween(string $from, string $to): int
+    {
+        [$fromHour, $fromMinute] = array_map('intval', explode(':', $from));
+        [$toHour, $toMinute] = array_map('intval', explode(':', $to));
+        return (($toHour * 60) + $toMinute) - (($fromHour * 60) + $fromMinute);
+    }
+
     public function getSettings(): array
     {
         return $this->settings;
@@ -284,9 +325,7 @@ class AttendanceService
         $start = substr((string) ($this->settings['checkout_start_time'] ?? '15:00'), 0, 5);
         $end = substr(self::CHECKOUT_END_TIME, 0, 5);
 
-        if ($serverTime < $start) {
-            $status = 'too_early';
-        } elseif ($serverTime > $end) {
+        if ($serverTime > $end) {
             $status = 'closed';
         } else {
             $status = 'open';

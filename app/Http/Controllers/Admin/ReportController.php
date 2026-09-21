@@ -3,103 +3,184 @@
 namespace App\Http\Controllers\Admin;
 
 use App\Http\Controllers\Controller;
-use App\Models\Attendance;
-use App\Models\User;
+use App\Models\SchoolSetting;
+use App\Services\AttendanceReportService;
 use App\Services\AuditLogService;
 use App\Services\SpreadsheetExportService;
+use Carbon\Carbon;
 
 class ReportController extends Controller
 {
+    public function __construct(protected AttendanceReportService $reports)
+    {
+    }
+
     public function index()
     {
-        $gurus = User::where('role', 'guru')->get();
+        $period = in_array(request('period', 'monthly'), ['daily', 'monthly', 'yearly'], true) ? request('period', 'monthly') : 'monthly';
         $month = min(12, max(1, (int) request('month', now()->month)));
         $year = min(2100, max(2000, (int) request('year', now()->year)));
-        $guruId = request('guru_id');
-        $status = request('status');
+        $guruId = request('guru_id') ? (int) request('guru_id') : null;
+        $rawStatus = request('status') ?: null;
+        $status = AttendanceReportService::normalizeStatus($rawStatus);
+        [$startDate, $endDate, $reportTitle] = $this->periodRange($period, $month, $year, request('date'));
 
-        $attendances = Attendance::whereMonth('tanggal', $month)
-            ->whereYear('tanggal', $year)
-            ->when($guruId, fn ($q) => $q->where('guru_id', $guruId))
-            ->when($status, fn ($q) => $q->where('status', $status))
-            ->get();
+        $gurus = $this->reports->resolveGurus($guruId);
+        $allGurus = $this->reports->resolveGurus();
 
-        if ($guruId) {
-            $gurus = $gurus->where('id', (int) $guruId)->values();
+        $daily = null;
+        $summary = null;
+        if ($period === 'daily') {
+            $daily = $this->reports->dailyReport($startDate, $guruId, $rawStatus);
+        } elseif ($period === 'yearly') {
+            $summary = $this->reports->yearlyReport($year, $guruId, $rawStatus);
+        } else {
+            $summary = $this->reports->monthlyReport($month, $year, $guruId, $rawStatus);
         }
 
-        $allGurus = User::where('role', 'guru')->get();
+        $kop = $this->kopLines();
 
-        $report = [
-            'total_hari_kerja' => $attendances->pluck('tanggal')->unique()->count(),
-            'hadir' => $attendances->where('status', 'hadir')->count(),
-            'terlambat' => $attendances->where('status', 'terlambat')->count(),
-            'izin' => $attendances->where('status', 'izin')->count(),
-            'sakit' => $attendances->where('status', 'sakit')->count(),
-            'guru_data' => $gurus->map(function ($g) use ($attendances) {
-                $gAtt = $attendances->where('guru_id', $g->id);
-                $total = $gAtt->count();
-                $hadir = $gAtt->where('status', 'hadir')->count();
-                $terlambat = $gAtt->where('status', 'terlambat')->count();
-                return [
-                    'name' => $g->name,
-                    'nip' => $g->username,
-                    'hadir' => $hadir,
-                    'terlambat' => $terlambat,
-                    'izin' => $gAtt->where('status', 'izin')->count(),
-                    'sakit' => $gAtt->where('status', 'sakit')->count(),
-                    'tak' => $gAtt->where('status', 'alpha')->count(),
-                    'persentase' => $total > 0 ? round(($hadir / $total) * 100) : 0,
-                ];
-            }),
-        ];
-
-        return view('admin.report.index', compact('gurus', 'allGurus', 'report', 'month', 'year'));
+        return view('admin.report.index', compact(
+            'gurus', 'allGurus', 'period', 'month', 'year', 'reportTitle',
+            'startDate', 'endDate', 'daily', 'summary', 'kop', 'status'
+        ));
     }
 
     public function export(SpreadsheetExportService $excel)
     {
+        $period = in_array(request('period', 'monthly'), ['daily', 'monthly', 'yearly'], true) ? request('period', 'monthly') : 'monthly';
         $month = min(12, max(1, (int) request('month', now()->month)));
         $year = min(2100, max(2000, (int) request('year', now()->year)));
-        $gurus = User::where('role', 'guru')->with('guruProfile')->get();
+        $guruId = request('guru_id') ? (int) request('guru_id') : null;
+        $rawStatus = request('status') ?: null;
+        [$startDate, $endDate, $periodLabel] = $this->periodRange($period, $month, $year, request('date'));
 
-        if (request('guru_id')) {
-            $gurus = $gurus->where('id', (int) request('guru_id'))->values();
+        $kop = $this->kopLines();
+        $meta = [
+            'printed_at' => now()->translatedFormat('d F Y H:i') . ' WIB',
+            'printed_by' => auth()->user()?->name ?? 'Admin',
+        ];
+        $statusLabels = ['hadir' => 'Hadir', 'terlambat' => 'Terlambat', 'izin' => 'Izin', 'sakit' => 'Sakit', 'alpha' => 'TAK', 'dinas_luar' => 'Dinas Luar'];
+
+        if ($period === 'daily') {
+            $daily = $this->reports->dailyReport($startDate, $guruId, $rawStatus);
+            $rekapRows = [];
+            foreach ($daily['attendances']->values() as $i => $att) {
+                $rekapRows[] = [
+                    $i + 1,
+                    AttendanceReportService::nipOf($att->guru),
+                    $att->guru->name ?? '-',
+                    $statusLabels[$att->status] ?? $att->status,
+                    $att->jam_masuk ? substr((string) $att->jam_masuk, 0, 5) : '-',
+                    $att->jam_pulang ? substr((string) $att->jam_pulang, 0, 5) : '-',
+                    $att->keterangan ?? '-',
+                ];
+            }
+            $missingRows = [];
+            foreach ($daily['missing']->values() as $i => $g) {
+                $missingRows[] = [$i + 1, AttendanceReportService::nipOf($g), $g->name, 'Belum Absen'];
+            }
+            AuditLogService::log('export', 'laporan', "Export laporan harian {$startDate} ke XLSX");
+
+            return $excel->downloadSheets("rekap_harian_{$startDate}.xlsx", [
+                [
+                    'title' => 'Harian', 'kop' => $kop, 'period' => 'REKAP HARIAN — ' . Carbon::parse($startDate)->locale('id')->translatedFormat('l, d F Y'),
+                    'headings' => ['NO', 'NIP', 'NAMA', 'STATUS', 'MASUK', 'PULANG', 'KETERANGAN'],
+                    'rows' => $rekapRows, 'signature' => true,
+                ],
+                [
+                    'title' => 'Belum Absen', 'kop' => $kop, 'period' => 'BELUM ABSEN — ' . $startDate,
+                    'headings' => ['NO', 'NIP', 'NAMA', 'STATUS'],
+                    'rows' => $missingRows, 'signature' => false,
+                ],
+            ], $meta);
         }
 
-        $attendances = Attendance::whereMonth('tanggal', $month)
-            ->whereYear('tanggal', $year)
-            ->when(request('guru_id'), fn ($q) => $q->where('guru_id', request('guru_id')))
-            ->when(request('status'), fn ($q) => $q->where('status', request('status')))
-            ->get();
+        $summary = $period === 'yearly'
+            ? $this->reports->yearlyReport($year, $guruId, $rawStatus)
+            : $this->reports->monthlyReport($month, $year, $guruId, $rawStatus);
 
-        $monthName = now()->locale('id')->month($month)->translatedFormat('F Y');
+        $rekapHeadings = ['NO', 'NIP', 'NAMA', 'H', 'TL', 'I', 'S', 'DL', 'TAK', 'APEL', 'TM', 'PS', 'KONV.HARI', 'TMTB', 'TOTAL', '%'];
+        $rekapRows = [];
+        foreach ($summary['rows'] as $row) {
+            $rekapRows[] = [
+                $row['no'], $row['nip'], $row['name'], $row['hadir'], $row['terlambat'],
+                $row['izin'], $row['sakit'], $row['dinas_luar'], $row['tak'], $row['apel'],
+                $row['tm'], $row['ps'], $row['konversi_hari'], $row['tmtb'], $row['total'], $row['persentase'],
+            ];
+        }
+        $t = $summary['totals'];
+        $totalsRow = ['', '', 'TOTAL', $t['hadir'], $t['terlambat'], $t['izin'], $t['sakit'], $t['dinas_luar'], $t['tak'], $t['apel'], $t['tm'], $t['ps'], '', $t['tmtb'], '', ''];
 
-        $rows = [];
-        foreach ($gurus as $index => $g) {
-            $gAtt = $attendances->where('guru_id', $g->id);
-            $total = $gAtt->count();
-            $hadir = $gAtt->where('status', 'hadir')->count();
-            $rows[] = [
-                $index + 1,
-                $g->name,
-                $g->username,
-                $hadir,
-                $gAtt->where('status', 'terlambat')->count(),
-                $gAtt->where('status', 'izin')->count(),
-                $gAtt->where('status', 'sakit')->count(),
-                $gAtt->where('status', 'alpha')->count(),
-                $total > 0 ? round(($hadir / $total) * 100) . '%' : '0%',
+        $detail = $this->reports->detailRows($startDate, $endDate, $guruId, $rawStatus);
+        $detailRows = [];
+        foreach ($detail->values() as $i => $att) {
+            $detailRows[] = [
+                $i + 1,
+                AttendanceReportService::nipOf($att->guru),
+                $att->guru->name ?? '-',
+                $att->tanggal,
+                Carbon::parse($att->tanggal)->locale('id')->translatedFormat('l'),
+                $statusLabels[$att->status] ?? $att->status,
+                $att->jam_masuk ? substr((string) $att->jam_masuk, 0, 5) : '-',
+                $att->jam_pulang ? substr((string) $att->jam_pulang, 0, 5) : '-',
+                $att->keterangan ?? '-',
             ];
         }
 
-        AuditLogService::log('export', 'laporan', "Export laporan absensi {$monthName} ke XLSX");
+        $sheets = [
+            [
+                'title' => 'Rekap', 'kop' => $kop, 'period' => 'REKAP ' . strtoupper($periodLabel) . " — Hari kerja: {$summary['hari_kerja']}",
+                'headings' => $rekapHeadings, 'rows' => $rekapRows, 'totals' => $totalsRow, 'signature' => true,
+            ],
+            [
+                'title' => 'Detail', 'kop' => $kop, 'period' => 'DETAIL ' . strtoupper($periodLabel),
+                'headings' => ['NO', 'NIP', 'NAMA', 'TANGGAL', 'HARI', 'STATUS', 'MASUK', 'PULANG', 'KETERANGAN'],
+                'rows' => $detailRows, 'signature' => false,
+            ],
+        ];
 
-        return $excel->download(
-            'laporan_absensi_' . $month . '_' . $year . '.xlsx',
-            ['No', 'Nama', 'NIP', 'Hadir', 'Terlambat', 'Izin', 'Sakit', 'Alpha (TAK)', 'Persentase'],
-            $rows,
-            'Laporan ' . $month . '-' . $year
-        );
+        if ($period === 'yearly') {
+            $monthRows = [];
+            foreach ($summary['per_month'] as $i => $m) {
+                $monthRows[] = [$i + 1, $m['bulan'], $m['hadir'], $m['terlambat'], $m['izin'], $m['sakit'], $m['dinas_luar'], $m['tak'], $m['apel']];
+            }
+            $sheets[] = [
+                'title' => 'Per Bulan', 'kop' => $kop, 'period' => 'AGREGAT PER BULAN — TAHUN ' . $year,
+                'headings' => ['NO', 'BULAN', 'H', 'TL', 'I', 'S', 'DL', 'TAK', 'APEL'],
+                'rows' => $monthRows, 'signature' => false,
+            ];
+            AuditLogService::log('export', 'laporan', "Export laporan tahunan {$year} ke XLSX");
+            return $excel->downloadSheets("rekap_tahunan_{$year}.xlsx", $sheets, $meta);
+        }
+
+        AuditLogService::log('export', 'laporan', "Export laporan bulanan {$month}-{$year} ke XLSX");
+        return $excel->downloadSheets(sprintf('rekap_bulanan_%02d_%04d.xlsx', $month, $year), $sheets, $meta);
+    }
+
+    /** Baris kop dari pengaturan sekolah. */
+    protected function kopLines(): array
+    {
+        $saved = SchoolSetting::allAsArray();
+        $name = $saved['school_name'] ?? 'SMKN 11 KABUPATEN TANGERANG';
+        $address = $saved['school_address'] ?? '';
+        $lines = ['REKAP KEHADIRAN GURU', mb_strtoupper((string) $name)];
+        if ($address !== '') {
+            $lines[] = $address;
+        }
+        return $lines;
+    }
+
+    protected function periodRange(string $period, int $month, int $year, ?string $date = null): array
+    {
+        if ($period === 'daily') {
+            $day = Carbon::parse($date ?: now()->toDateString());
+            return [$day->toDateString(), $day->toDateString(), 'Harian ' . $day->locale('id')->translatedFormat('l, d F Y')];
+        }
+        if ($period === 'yearly') {
+            return ["{$year}-01-01", "{$year}-12-31", 'Tahunan ' . $year];
+        }
+        $start = Carbon::create($year, $month, 1);
+        return [$start->toDateString(), $start->copy()->endOfMonth()->toDateString(), 'Bulanan ' . $start->locale('id')->translatedFormat('F Y')];
     }
 }

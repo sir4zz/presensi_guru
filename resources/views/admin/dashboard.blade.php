@@ -68,6 +68,11 @@
         <div class="stat-card-label">Sudah Pulang</div>
         <div class="stat-card-value">{{ $stats['pulang'] ?? 0 }}</div>
     </a>
+
+    <a href="{{ route('admin.attendance.index', ['status' => 'dinas_luar']) }}" class="stat-card">
+        <div class="stat-card-icon info"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 21h18M5 21V5l7-3 7 3v16M9 9h6M9 13h6M9 17h6"/></svg></div>
+        <div class="stat-card-label">Dinas Luar</div><div class="stat-card-value">{{ $stats['dinas_luar'] ?? 0 }}</div>
+    </a>
 </div>
 
 <div class="chart-row">

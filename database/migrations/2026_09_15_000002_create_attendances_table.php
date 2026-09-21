@@ -12,7 +12,7 @@ return new class extends Migration
             $table->id();
             $table->foreignId('guru_id')->constrained('users')->cascadeOnDelete();
             $table->date('tanggal');
-            $table->enum('status', ['hadir', 'terlambat', 'izin', 'sakit', 'alpha', 'tugas_luar'])->default('hadir');
+            $table->enum('status', ['hadir', 'terlambat', 'izin', 'sakit', 'alpha', 'tugas_luar', 'dinas_luar'])->default('hadir');
             $table->time('jam_masuk')->nullable();
             $table->time('jam_pulang')->nullable();
             $table->string('foto_masuk')->nullable();
@@ -25,6 +25,11 @@ return new class extends Migration
             $table->decimal('distance_pulang', 8, 2)->nullable();
             $table->text('keterangan')->nullable();
             $table->string('bukti_file')->nullable();
+            $table->text('keperluan_dinas')->nullable();
+            $table->string('lokasi_dinas')->nullable();
+            $table->string('surat_tugas_file')->nullable();
+            $table->foreignId('dinas_verified_by')->nullable()->constrained('users')->nullOnDelete();
+            $table->timestamp('dinas_verified_at')->nullable();
             $table->timestamps();
 
             $table->unique(['guru_id', 'tanggal']);

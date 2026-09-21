@@ -120,6 +120,8 @@ Route::prefix('admin')->name('admin.')->middleware(['auth', 'role:admin'])->grou
     Route::get('/absensi', [AttendanceController::class, 'index'])->name('attendance.index');
     Route::get('/absensi/{id}', [AttendanceController::class, 'show'])->name('attendance.show');
     Route::put('/absensi/{id}', [AttendanceController::class, 'update'])->name('attendance.update');
+    Route::post('/absensi/{attendance}/verifikasi-dinas', [AttendanceController::class, 'verifyDinas'])->name('attendance.verify-dinas');
+    Route::post('/absensi/{attendance}/tolak-dinas', [AttendanceController::class, 'rejectDinas'])->name('attendance.reject-dinas');
 
     // Permission
     Route::get('/izin', [PermissionController::class, 'index'])->name('permission.index');

@@ -14,7 +14,7 @@ class UpdateAttendanceRequest extends FormRequest
     public function rules(): array
     {
         return [
-            'status' => 'required|in:hadir,terlambat,izin,sakit,alpha,tugas_luar',
+            'status' => 'required|in:hadir,terlambat,izin,sakit,alpha,tugas_luar,dinas_luar',
             'jam_masuk' => 'nullable|date_format:H:i',
             'jam_pulang' => 'nullable|date_format:H:i',
             'keterangan' => 'nullable|string|max:500',

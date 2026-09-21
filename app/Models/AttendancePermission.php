@@ -11,6 +11,7 @@ class AttendancePermission extends Model
         'creator_id',
         'tanggal',
         'alasan',
+        'status',
     ];
 
     public function guru()

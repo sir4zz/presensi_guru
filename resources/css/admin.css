@@ -522,3 +522,39 @@
         padding: 0 3px;
     }
 }
+/* Format laporan bulanan sesuai lembar rekap resmi. */
+.print-only { display: none; }
+.monthly-report-heading { text-align: center; margin: 10px 0 18px; }
+.monthly-report-heading h1 { margin: 0; font-size: 18px; letter-spacing: .04em; }
+.monthly-report-heading h2 { margin: 4px 0 14px; font-size: 15px; font-weight: 500; }
+.monthly-report-meta { display: grid; grid-template-columns: 110px 16px 1fr; text-align: left; max-width: 580px; margin: 3px auto; font-size: 12px; }
+.monthly-filter { display: flex; flex-direction: row; flex-wrap: nowrap; gap: 8px; width: 260px; }
+.monthly-filter .form-select { flex: 1 1 0; min-width: 0; width: auto; }
+.monthly-attendance-card { margin-bottom: var(--space-6); }
+.monthly-attendance-table th, .monthly-attendance-table td { white-space: nowrap; }
+.period-date-hidden { display: none; }
+.attendance-export-options { display: flex; align-items: center; gap: 10px; margin: 0 0 var(--space-4); font-size: var(--text-sm); }
+.attendance-export-options label { font-weight: 600; color: var(--color-text); }
+.attendance-export-options .form-select { width: 130px; }
+@media (max-width: 560px) { .attendance-export-options { align-items: flex-start; flex-direction: column; gap: 6px; } .attendance-export-options .form-select { width: 100%; } }
+.admin-attendance-page .page-subtitle { font-size: var(--text-xs); }
+.admin-attendance-page .card-title { font-size: var(--text-lg); }
+.admin-attendance-page .filter-bar .form-input,
+.admin-attendance-page .filter-bar .form-select,
+.admin-attendance-page .monthly-filter .form-select { font-size: var(--text-sm); }
+.admin-attendance-page .table th { font-size: var(--text-xs); }
+.admin-attendance-page .table td { font-size: var(--text-sm); }
+.admin-attendance-page .monthly-report-heading h1 { font-size: var(--text-xl); }
+.admin-attendance-page .monthly-report-heading h2 { font-size: var(--text-lg); }
+@media print {
+    @page { size: A4 landscape; margin: 12mm; }
+    .no-print, .filter-bar, .stats-grid, .page-header, .bottom-nav { display: none !important; }
+    .print-only { display: block; }
+    .page-content { padding: 0 !important; }
+    .card { border: 0; padding: 0; box-shadow: none; }
+    .card-header { display: none; }
+    .table-wrapper { border: 0; overflow: visible; }
+    .table { font-size: 9px; }
+    .table th, .table td { padding: 5px 6px; border: 1px solid #777; }
+    .table th { background: #e8e8e8 !important; color: #111; text-transform: uppercase; }
+}
