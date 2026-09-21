@@ -1,7 +1,7 @@
 @extends('layouts.admin')
 
-@section('title', 'Tambah Guru - Admin')
-@section('page-title', 'Tambah Guru')
+@section('title', 'Tambah Data Guru - Admin')
+@section('page-title', 'Tambah Data Guru')
 
 @section('content')
 @if($errors->any())
@@ -25,79 +25,22 @@
     </x-button>
 </div>
 
-<div class="card" style="max-width: 640px;">
+<div class="card" style="max-width: 900px;">
     <form method="POST" action="{{ route('admin.guru.store') }}">
         @csrf
-
-        <div class="form-group" style="margin-bottom: var(--space-4);">
-            <label for="name" class="form-label">Nama Lengkap</label>
-            <input type="text" id="name" name="name" class="form-input @error('name') form-input-error @enderror" value="{{ old('name') }}" required pattern="[A-Za-z\s]+" placeholder="Masukkan nama lengkap">
-            @error('name')
-                <span class="form-error">{{ $message }}</span>
-            @enderror
-        </div>
-
-        <div class="form-group" style="margin-bottom: var(--space-4);">
-            <label for="nip" class="form-label">NIP</label>
-            <input type="text" id="nip" name="nip" class="form-input @error('nip') form-input-error @enderror" value="{{ old('nip') }}" required pattern="[0-9]{1,20}" inputmode="numeric" placeholder="Masukkan NIP (angka saja)">
-            @error('nip')
-                <span class="form-error">{{ $message }}</span>
-            @enderror
-        </div>
-
-        <div style="display: grid; grid-template-columns: 1fr 1fr; gap: var(--space-4); margin-bottom: var(--space-4);">
-            <div class="form-group">
-                <label for="sk" class="form-label">SK</label>
-                <input type="text" id="sk" name="sk" class="form-input @error('sk') form-input-error @enderror" value="{{ old('sk') }}">
-                @error('sk')
-                    <span class="form-error">{{ $message }}</span>
-                @enderror
-            </div>
-
-            <div class="form-group">
-                <label for="spmt" class="form-label">SPMT</label>
-                <input type="text" id="spmt" name="spmt" class="form-input @error('spmt') form-input-error @enderror" value="{{ old('spmt') }}">
-                @error('spmt')
-                    <span class="form-error">{{ $message }}</span>
-                @enderror
-            </div>
-        </div>
-
-        <div class="form-group" style="margin-bottom: var(--space-4);">
-            <label for="password" class="form-label">Password</label>
-            <input type="password" id="password" name="password" class="form-input @error('password') form-input-error @enderror" required>
-            @error('password')
-                <span class="form-error">{{ $message }}</span>
-            @enderror
-        </div>
-
-        <div class="form-group" style="margin-bottom: var(--space-6);">
-            <label for="password_confirmation" class="form-label">Konfirmasi Password</label>
-            <input type="password" id="password_confirmation" name="password_confirmation" class="form-input" required>
-        </div>
-
-        <div class="flex gap-3">
-            <x-button variant="secondary" href="{{ route('admin.guru.index') }}">Batal</x-button>
-            <x-button type="submit">Simpan</x-button>
-        </div>
+        @php $guru = null; @endphp
+        @include('admin.guru._form_tabs', ['mode' => 'create'])
     </form>
 </div>
-@endsection
 
-@push('scripts')
 <script>
 document.addEventListener('DOMContentLoaded', function() {
-    var nipInput = document.getElementById('nip');
-    nipInput.addEventListener('keydown', function(e) {
-        if ([8, 9, 27, 13, 46, 37, 38, 39, 40, 35, 36].indexOf(e.keyCode) !== -1) return;
-        if ((e.ctrlKey || e.metaKey) && [65, 67, 86, 88].indexOf(e.keyCode) !== -1) return;
-        if ((e.shiftKey || (e.keyCode < 48 || e.keyCode > 57)) && (e.keyCode < 96 || e.keyCode > 105)) {
-            e.preventDefault();
-        }
+    document.querySelectorAll('.guru-tab-btn').forEach(btn => {
+        btn.addEventListener('click', function() {
+            switchTab('create', this.dataset.tab);
+        });
     });
-    nipInput.addEventListener('input', function() {
-        this.value = this.value.replace(/[^0-9]/g, '');
-    });
+    switchTab('create', 'data_pribadi');
 });
 </script>
-@endpush
+@endsection

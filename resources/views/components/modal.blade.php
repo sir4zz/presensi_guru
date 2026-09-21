@@ -4,8 +4,17 @@
     'size' => 'md',
 ])
 
+@php
+    $sizeStyles = match($size) {
+        'sm' => 'max-width: 360px;',
+        'lg' => 'max-width: 640px;',
+        'xl' => 'max-width: 900px;',
+        default => '',
+    };
+@endphp
+
 <div class="modal-overlay" id="{{ $id }}">
-    <div class="modal" style="{{ $size === 'lg' ? 'max-width: 640px;' : ($size === 'sm' ? 'max-width: 360px;' : '') }}">
+    <div class="modal" style="{{ $sizeStyles }}">
         <div class="modal-header">
             <h3 class="modal-title">{{ $title }}</h3>
             <button class="modal-close" onclick="document.getElementById('{{ $id }}').classList.remove('active')" aria-label="Tutup">
