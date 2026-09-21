@@ -675,6 +675,29 @@
     color: var(--color-text);
 }
 
+/* Dinas luar dan ringkasan disiplin */
+.attendance-day-card { display:grid; grid-template-columns:1fr 1fr; border:1px solid var(--color-border-light); border-radius:var(--radius-lg); background:var(--color-surface); margin-bottom:var(--space-4); }
+.attendance-day-card > div { padding:var(--space-4); display:flex; flex-direction:column; gap:var(--space-1); }
+.attendance-day-card > div + div { border-left:1px solid var(--color-border-light); }
+.attendance-day-label { color:var(--color-text-muted); font-size:var(--text-xs); text-transform:uppercase; }
+.day-holiday { color:var(--color-danger); }.day-work { color:var(--color-success); }
+.discipline-card { padding:var(--space-4); margin-bottom:var(--space-4); }
+.discipline-card .card-header { gap:var(--space-3); flex-wrap:wrap; }.discipline-card .card-header form { width:120px; }
+.discipline-row { display:grid; grid-template-columns:minmax(0, 1fr) 16px minmax(90px, auto); gap:var(--space-2); align-items:center; padding:10px 0; border-bottom:1px solid var(--color-border-light); font-size:var(--text-sm); }
+.discipline-row:last-child { border-bottom:0; }.discipline-row b { text-align:center; }.discipline-row strong { text-align:right; white-space:nowrap; }
+
+/* Tipografi halaman absensi: satu hierarki ukuran di seluruh flow. */
+.attendance-container .status-card-date { font-size: var(--text-sm); }
+.attendance-container .status-card-status { font-size: var(--text-xl); }
+.attendance-container .status-card-time,
+.attendance-container .attendance-day-card strong,
+.attendance-container .discipline-row { font-size: var(--text-sm); }
+.attendance-container .attendance-day-label,
+.attendance-container .discipline-card .card-title { font-size: var(--text-xs); }
+.attendance-container .discipline-card .card-title { letter-spacing: .04em; }
+.attendance-container .discipline-row strong { font-size: var(--text-sm); font-weight: 600; }
+.attendance-container .form-select { font-size: var(--text-sm); }
+
 /* ========================================
    RESPONSIVE (Desktop)
    ======================================== */

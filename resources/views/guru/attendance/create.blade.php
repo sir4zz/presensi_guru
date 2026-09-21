@@ -6,6 +6,11 @@
 @section('content')
 <div class="attendance-container">
 
+    <div class="attendance-day-card">
+        <div><span class="attendance-day-label">Tanggal</span><strong>{{ now()->format('d-m-Y') }}</strong></div>
+        <div><span class="attendance-day-label">Status Hari</span><strong class="{{ $redDate['is_red'] ? 'day-holiday' : 'day-work' }}">{{ $redDate['is_red'] ? 'LIBUR' : 'HARI KERJA' }}</strong></div>
+    </div>
+
     {{-- STEP 0: Status Hari Ini --}}
     <div id="stepStatus">
         <div class="status-card {{ $todayAttendance?->status ?? 'belum' }}">

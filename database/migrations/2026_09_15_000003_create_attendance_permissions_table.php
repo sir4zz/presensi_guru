@@ -14,6 +14,7 @@ return new class extends Migration
             $table->foreignId('creator_id')->constrained('users')->cascadeOnDelete();
             $table->date('tanggal');
             $table->text('alasan');
+            $table->string('status')->default('izin');
             $table->timestamps();
         });
     }

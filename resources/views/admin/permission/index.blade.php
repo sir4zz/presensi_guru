@@ -10,7 +10,7 @@
     </div>
     <x-button onclick="document.getElementById('createIzinModal').classList.add('active')">
         <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
-        Izin Massal
+        Buat Izin / Sakit / Dinas
     </x-button>
 </div>
 
@@ -34,6 +34,7 @@
                     <th>Tanggal</th>
                     <th>Guru</th>
                     <th>NIP</th>
+                    <th>Status</th>
                     <th>Alasan</th>
                     <th>Dibuat Oleh</th>
                     <th style="width: 80px;">Aksi</th>
@@ -45,6 +46,7 @@
                         <td>{{ \Carbon\Carbon::parse($perm->tanggal)->format('d M Y') }}</td>
                         <td class="font-medium">{{ $perm->guru->name ?? '-' }}</td>
                         <td class="text-muted">{{ $perm->guru->username ?? '-' }}</td>
+                        <td><x-badge variant="{{ $perm->status === 'sakit' ? 'danger' : ($perm->status === 'dinas_luar' ? 'info' : 'info') }}">{{ $perm->status === 'dinas_luar' ? 'Dinas Luar' : ucfirst($perm->status ?? 'izin') }}</x-badge></td>
                         <td class="text-sm">{{ $perm->alasan }}</td>
                         <td class="text-muted">{{ $perm->creator->name ?? '-' }}</td>
                         <td>
@@ -67,9 +69,16 @@
     <x-empty-state title="Belum ada izin" text="Belum ada pengajuan izin absensi dari guru." />
 @endif
 
-<x-modal id="createIzinModal" title="Izin Massal">
+<x-modal id="createIzinModal" title="Buat Izin, Sakit, atau Dinas Luar" size="lg">
     <form method="POST" action="{{ route('admin.permission.store') }}">
         @csrf
+
+        <div class="form-group" style="margin-bottom: var(--space-4);">
+            <label for="status_izin" class="form-label">Jenis</label>
+            <select id="status_izin" name="status" class="form-select" required>
+                <option value="izin">Izin</option><option value="sakit">Sakit</option><option value="dinas_luar">Dinas Luar</option>
+            </select>
+        </div>
 
         <div class="form-group" style="margin-bottom: var(--space-4);">
             <label for="guru_ids" class="form-label">Pilih Guru</label>
@@ -89,13 +98,24 @@
         </div>
 
         <div class="form-group" style="margin-bottom: var(--space-6);">
-            <label for="alasan" class="form-label">Alasan Izin</label>
-            <textarea id="alasan" name="alasan" class="form-textarea" required placeholder="Masukkan alasan izin..."></textarea>
+            <label for="alasan" class="form-label">Keterangan / Keperluan</label>
+            <textarea id="alasan" name="alasan" class="form-textarea" required placeholder="Masukkan keterangan..."></textarea>
+        </div>
+
+        <div class="form-group" style="margin-bottom: var(--space-4);" id="lokasiDinasGroup">
+            <label for="lokasi_dinas" class="form-label">Lokasi Dinas (wajib untuk Dinas Luar)</label>
+            <input id="lokasi_dinas" name="lokasi_dinas" class="form-input" placeholder="Lokasi kegiatan dinas">
+        </div>
+
+        <div class="form-group" style="margin-bottom: var(--space-6);">
+            <label for="bukti_file" class="form-label">Lampiran (opsional)</label>
+            <input id="bukti_file" name="bukti_file" type="file" class="form-input" accept=".jpg,.jpeg,.png,.pdf">
+            <span class="form-help">JPG, PNG, atau PDF maksimal 5 MB. Berlaku untuk izin, sakit, dan dinas luar.</span>
         </div>
 
         <div class="modal-footer" style="padding: 0; border: none;">
             <x-button variant="secondary" onclick="document.getElementById('createIzinModal').classList.remove('active')">Batal</x-button>
-            <x-button type="submit">Berikan Izin</x-button>
+            <x-button type="submit">Simpan</x-button>
         </div>
     </form>
 </x-modal>
@@ -119,5 +139,15 @@ function confirmRevoke(id) {
     document.getElementById('revokeForm').action = `/admin/izin/${id}`;
     document.getElementById('revokeModal').classList.add('active');
 }
+const statusIzin = document.getElementById('status_izin');
+const lokasiGroup = document.getElementById('lokasiDinasGroup');
+const lokasiInput = document.getElementById('lokasi_dinas');
+function syncDinasFields() {
+    const isDinas = statusIzin.value === 'dinas_luar';
+    lokasiGroup.style.display = isDinas ? '' : 'none';
+    lokasiInput.required = isDinas;
+}
+statusIzin.addEventListener('change', syncDinasFields);
+syncDinasFields();
 </script>
 @endpush

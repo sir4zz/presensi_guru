@@ -17,6 +17,13 @@
     </select>
 </div>
 
+<div class="card discipline-card">
+    <div class="card-header"><h3 class="card-title">DISIPLIN PEGAWAI</h3></div>
+    @foreach([['Terlambat Datang (TD)', 'terlambat_menit', 'Menit'], ['Pulang Sebelum Waktu (PS)', 'pulang_awal_menit', 'Menit'], ['Konversi Jam (TD + PS / 60)', 'konversi_jam', 'Jam'], ['Konversi Hari (TD + PS / 60 / 7)', 'konversi_hari', 'Hari'], ['TMTB (Tidak Masuk Tanpa Berita)', 'tmtb', 'Hari'], ['Total (Konversi Hari + TMTB)', 'total_hari', 'Hari']] as [$label, $key, $unit])
+        <div class="discipline-row"><span>{{ $label }}</span><b>:</b><strong>{{ in_array($key, ['konversi_hari', 'total_hari'], true) ? round($discipline[$key]) : $discipline[$key] }} {{ $unit }}</strong></div>
+    @endforeach
+</div>
+
 @if(isset($history) && count($history) > 0)
     <div class="history-list">
         @foreach($history as $item)
@@ -35,6 +42,8 @@
                             <span style="color: var(--color-info);">Izin</span>
                         @elseif($item->status === 'sakit')
                             <span style="color: var(--color-danger);">Sakit</span>
+                        @elseif($item->status === 'dinas_luar')
+                            <span style="color: var(--color-info);">Dinas Luar</span>
                         @else
                             <span style="color: var(--color-danger);">TAK</span>
                         @endif

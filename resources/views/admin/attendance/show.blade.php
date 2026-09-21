@@ -48,6 +48,8 @@
                     <x-badge variant="info">Izin</x-badge>
                 @elseif($attendance->status === 'sakit')
                     <x-badge variant="danger">Sakit</x-badge>
+                @elseif($attendance->status === 'dinas_luar')
+                    <x-badge variant="info">Dinas Luar</x-badge>
                 @else
                     <x-badge variant="danger">TAK</x-badge>
                 @endif
@@ -64,6 +66,13 @@
                 <span class="account-field-label">Keterangan</span>
                 <span class="account-field-value">{{ $attendance->keterangan ?? '-' }}</span>
             </div>
+            @if($attendance->status === 'dinas_luar')
+                <div class="account-field"><span class="account-field-label">Lokasi Dinas</span><span class="account-field-value">{{ $attendance->lokasi_dinas ?? '-' }}</span></div>
+                <div class="account-field"><span class="account-field-label">Keperluan</span><span class="account-field-value">{{ $attendance->keperluan_dinas ?? '-' }}</span></div>
+                <div class="account-field"><span class="account-field-label">Verifikasi</span><span class="account-field-value">{{ $attendance->dinas_verified_at ? 'Terverifikasi' : 'Menunggu verifikasi' }}</span></div>
+                @if($attendance->bukti_file)<div class="account-field"><span class="account-field-label">Bukti Lampiran</span><a href="{{ Storage::url($attendance->bukti_file) }}" target="_blank" class="btn btn-secondary btn-sm">Lihat / Download</a></div>@endif
+                <div style="display:flex;gap:var(--space-2)"><form method="POST" action="{{ route('admin.attendance.verify-dinas', $attendance) }}">@csrf<button class="btn btn-success btn-sm">Verifikasi</button></form><form method="POST" action="{{ route('admin.attendance.reject-dinas', $attendance) }}">@csrf<button class="btn btn-danger btn-sm">Tolak</button></form></div>
+            @endif
         </div>
     </div>
 
@@ -112,6 +121,7 @@
                 <option value="terlambat" {{ $attendance->status === 'terlambat' ? 'selected' : '' }}>Terlambat</option>
                 <option value="izin" {{ $attendance->status === 'izin' ? 'selected' : '' }}>Izin</option>
                 <option value="sakit" {{ $attendance->status === 'sakit' ? 'selected' : '' }}>Sakit</option>
+                <option value="dinas_luar" {{ $attendance->status === 'dinas_luar' ? 'selected' : '' }}>Dinas Luar</option>
                 <option value="tidak_ada_keterangan" {{ $attendance->status === 'tidak_ada_keterangan' ? 'selected' : '' }}>TAK</option>
             </select>
         </div>

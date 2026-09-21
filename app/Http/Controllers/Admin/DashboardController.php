@@ -25,6 +25,7 @@ class DashboardController extends Controller
             'tak' => $alphaCount,
             'belum' => max(0, $totalGuru - $todayAttendance->count()),
             'pulang' => $todayAttendance->whereNotNull('jam_pulang')->count(),
+            'dinas_luar' => $todayAttendance->where('status', 'dinas_luar')->count(),
         ];
 
         return view('admin.dashboard', compact('stats', 'todayAttendance'));
@@ -38,6 +39,7 @@ class DashboardController extends Controller
         $stats = [
             'hadir' => Attendance::whereDate('tanggal', $today)->where('status', 'hadir')->count(),
             'terlambat' => Attendance::whereDate('tanggal', $today)->where('status', 'terlambat')->count(),
+            'dinas_luar' => Attendance::whereDate('tanggal', $today)->where('status', 'dinas_luar')->count(),
         ];
 
         if ($period === 'week') {
@@ -64,6 +66,7 @@ class DashboardController extends Controller
                 'izin' => $day->where('status', 'izin')->count(),
                 'sakit' => $day->where('status', 'sakit')->count(),
                 'alpha' => $day->where('status', 'alpha')->count(),
+                'dinas_luar' => $day->where('status', 'dinas_luar')->count(),
             ];
             $cursor->addDay();
         }
@@ -75,6 +78,7 @@ class DashboardController extends Controller
             'izin' => $inPeriod->where('status', 'izin')->count(),
             'sakit' => $inPeriod->where('status', 'sakit')->count(),
             'alpha' => $inPeriod->where('status', 'alpha')->count(),
+            'dinas_luar' => $inPeriod->where('status', 'dinas_luar')->count(),
         ];
 
         return response()->json(['stats' => $stats, 'trend' => $trend, 'distribution' => $distribution, 'period' => $period]);
