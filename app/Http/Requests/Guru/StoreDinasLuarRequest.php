@@ -14,7 +14,7 @@ class StoreDinasLuarRequest extends FormRequest
             'tanggal' => ['required', 'date', 'after_or_equal:today'],
             'keperluan_dinas' => ['required', 'string', 'max:2000'],
             'lokasi_dinas' => ['required', 'string', 'max:255'],
-            'bukti_file' => ['required', 'file', 'mimes:jpg,jpeg,png,pdf', 'max:5120'],
+            'bukti_file' => ['required', 'file', 'mimes:jpg,jpeg,png,webp,pdf', 'max:5120'],
         ];
     }
 }

@@ -285,7 +285,7 @@
                         html += '<td>' + (a.jam_masuk || '-') + '</td>';
                         html += '<td>' + (a.jam_pulang || '-') + '</td>';
                         html += '<td>' + (a.distance_masuk ? a.distance_masuk + 'm' : '-') + '</td>';
-                        html += '<td>' + (a.foto_masuk ? '<img src="/storage/' + a.foto_masuk + '" alt="Foto" style="width:32px;height:32px;border-radius:var(--radius-md);object-fit:cover;">' : '-') + '</td>';
+                        html += '<td>' + (a.foto_masuk ? '<a href="/storage/' + a.foto_masuk + '" target="_blank"><img src="/storage/' + (a.foto_masuk_thumb || a.foto_masuk) + '" alt="Foto" loading="lazy" decoding="async" style="width:32px;height:32px;border-radius:var(--radius-md);object-fit:cover;"></a>' : '-') + '</td>';
                         html += '</tr>';
                     });
                     html += '</tbody></table></div>';

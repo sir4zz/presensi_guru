@@ -5,10 +5,15 @@ namespace App\Http\Controllers\Admin;
 use App\Http\Controllers\Controller;
 use App\Http\Requests\Admin\UpdateSettingRequest;
 use App\Models\SchoolSetting;
-use Illuminate\Support\Facades\Storage;
+use App\Services\FileUploadException;
+use App\Services\FileUploadService;
 
 class SettingController extends Controller
 {
+    public function __construct(protected FileUploadService $files)
+    {
+    }
+
     public function index()
     {
         $defaults = [
@@ -35,11 +40,16 @@ class SettingController extends Controller
         }
 
         if ($request->hasFile('school_logo')) {
-            if ($request->user()->school_logo) {
-                Storage::disk('public')->delete($request->user()->school_logo);
+            // BUGFIX: logo tersimpan di school_settings, bukan di tabel users —
+            // sebelumnya file logo lama tidak pernah terhapus (orphan).
+            $oldLogo = SchoolSetting::allAsArray()['school_logo'] ?? null;
+            try {
+                $path = $this->files->storeLogo($request->file('school_logo'));
+            } catch (FileUploadException $e) {
+                return back()->withInput()->with('error', $e->getMessage());
             }
-            $path = $request->file('school_logo')->store('logos', 'public');
             SchoolSetting::set('school_logo', $path);
+            $this->files->deleteFile($oldLogo);
         }
 
         return redirect()->route('admin.setting.index')->with('success', 'Pengaturan berhasil disimpan.');

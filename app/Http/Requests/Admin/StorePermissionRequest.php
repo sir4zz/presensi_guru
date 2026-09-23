@@ -20,7 +20,7 @@ class StorePermissionRequest extends FormRequest
             'alasan' => 'required|string|max:500',
             'status' => 'required|in:izin,sakit,dinas_luar',
             'lokasi_dinas' => 'required_if:status,dinas_luar|nullable|string|max:255',
-            'bukti_file' => 'nullable|file|mimes:jpg,jpeg,png,pdf|max:5120',
+            'bukti_file' => 'nullable|file|mimes:jpg,jpeg,png,webp,pdf|max:5120',
         ];
     }
 }

@@ -7,10 +7,15 @@ use App\Http\Controllers\Controller;
 use App\Http\Requests\Guru\StoreDinasLuarRequest;
 use App\Models\Attendance;
 use App\Services\AuditLogService;
-use Illuminate\Support\Facades\Storage;
+use App\Services\FileUploadException;
+use App\Services\FileUploadService;
 
 class DinasLuarController extends Controller
 {
+    public function __construct(protected FileUploadService $files)
+    {
+    }
+
     public function create()
     {
         $requests = auth()->user()->attendances()->where('status', AttendanceStatus::DinasLuar->value)->latest('tanggal')->get();
@@ -22,7 +27,11 @@ class DinasLuarController extends Controller
         $data = $request->validated();
         $existing = Attendance::where('guru_id', $request->user()->id)->whereDate('tanggal', $data['tanggal'])->first();
         if ($existing) return back()->withInput()->with('error', 'Tanggal tersebut sudah memiliki data absensi.');
-        $path = $request->file('bukti_file')->store('attendance/evidence', 'public');
+        try {
+            $path = $this->files->storeEvidence($request->file('bukti_file'));
+        } catch (FileUploadException $e) {
+            return back()->withInput()->with('error', $e->getMessage());
+        }
         $attendance = Attendance::create([
             'guru_id' => $request->user()->id,
             'tanggal' => $data['tanggal'],
@@ -39,8 +48,15 @@ class DinasLuarController extends Controller
     public function destroy(Attendance $attendance)
     {
         abort_unless($attendance->guru_id === auth()->id() && $attendance->status === AttendanceStatus::DinasLuar->value, 403);
-        if ($attendance->bukti_file) Storage::disk('public')->delete($attendance->bukti_file);
+        $bukti = $attendance->bukti_file;
+        $surat = $attendance->surat_tugas_file;
         $attendance->delete();
+        // Hapus file fisik + thumbnail setelah record terhapus (hindari orphan reference).
+        // bukti & surat menunjuk file yang sama — hapus sekali saja.
+        $this->files->deleteFile($bukti);
+        if ($surat !== $bukti) {
+            $this->files->deleteFile($surat);
+        }
         AuditLogService::log('hapus_bukti', 'absensi', 'Menghapus bukti Dinas Luar');
         return back()->with('success', 'Pengajuan Dinas Luar dihapus.');
     }

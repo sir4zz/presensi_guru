@@ -8,6 +8,7 @@ use App\Http\Requests\Admin\UpdateGuruRequest;
 use App\Models\GuruProfile;
 use App\Models\User;
 use App\Services\AuditLogService;
+use App\Services\FileUploadService;
 use App\Services\SpreadsheetExportService;
 use Illuminate\Support\Facades\Hash;
 use Illuminate\Support\Facades\Storage;
@@ -47,6 +48,10 @@ class GuruController extends Controller
         'tanggal_lahir', 'tmt_golongan', 'tmt_cpns', 'tmt_pns_pppk',
         'tmt_sk_sekolah', 'tanggal_sk_kgb', 'tmt_kgb_akhir', 'tmt_kgb_berikutnya',
     ];
+
+    public function __construct(protected FileUploadService $files)
+    {
+    }
 
     public function index()
     {
@@ -155,7 +160,15 @@ class GuruController extends Controller
     {
         $guru = User::where('role', 'guru')->findOrFail($id);
         $name = $guru->name;
+        // Kumpulkan path file sebelum cascade delete agar tidak orphan di storage.
+        $paths = $guru->attendances()
+            ->get(['foto_masuk', 'foto_pulang', 'bukti_file', 'surat_tugas_file'])
+            ->flatMap(fn ($a) => [$a->foto_masuk, $a->foto_pulang, $a->bukti_file, $a->surat_tugas_file])
+            ->filter()->unique()->values();
         $guru->delete();
+        foreach ($paths as $path) {
+            $this->files->deleteFileIfOrphan($path);
+        }
 
         AuditLogService::log('delete', 'guru', "Menghapus guru: {$name}");
 

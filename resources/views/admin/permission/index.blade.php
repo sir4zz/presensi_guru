@@ -70,7 +70,7 @@
 @endif
 
 <x-modal id="createIzinModal" title="Buat Izin, Sakit, atau Dinas Luar" size="lg">
-    <form method="POST" action="{{ route('admin.permission.store') }}">
+    <form method="POST" action="{{ route('admin.permission.store') }}" enctype="multipart/form-data" data-upload-form>
         @csrf
 
         <div class="form-group" style="margin-bottom: var(--space-4);">
@@ -109,8 +109,8 @@
 
         <div class="form-group" style="margin-bottom: var(--space-6);">
             <label for="bukti_file" class="form-label">Lampiran (opsional)</label>
-            <input id="bukti_file" name="bukti_file" type="file" class="form-input" accept=".jpg,.jpeg,.png,.pdf">
-            <span class="form-help">JPG, PNG, atau PDF maksimal 5 MB. Berlaku untuk izin, sakit, dan dinas luar.</span>
+            <input id="bukti_file" name="bukti_file" type="file" class="form-input" accept=".jpg,.jpeg,.png,.webp,.pdf">
+            <span class="form-help">JPG, PNG, WebP, atau PDF maksimal 5 MB. Berlaku untuk izin, sakit, dan dinas luar.</span>
         </div>
 
         <div class="modal-footer" style="padding: 0; border: none;">
@@ -149,5 +149,12 @@ function syncDinasFields() {
 }
 statusIzin.addEventListener('change', syncDinasFields);
 syncDinasFields();
+// Cegah double submit saat upload lampiran.
+document.querySelectorAll('[data-upload-form]').forEach(function(f) {
+    f.addEventListener('submit', function() {
+        const btn = f.querySelector('button[type=submit]');
+        if (btn) btn.disabled = true;
+    });
+});
 </script>
 @endpush
