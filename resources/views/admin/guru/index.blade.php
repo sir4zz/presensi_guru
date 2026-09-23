@@ -100,7 +100,7 @@
         {{ $gurus->links() }}
     </div>
 @else
-    <x-empty-state title="Belum ada data guru" text="Tambahkan guru baru atau import dari file CSV." />
+    <x-empty-state title="Belum ada data guru" text="Tambahkan guru baru atau import dari file CSV/XLSX." />
 @endif
 
 {{-- Modal Tambah Guru --}}
@@ -139,19 +139,21 @@
 </x-modal>
 
 {{-- Modal Import --}}
-<x-modal id="importModal" title="Import Guru dari CSV">
+<x-modal id="importModal" title="Import Guru">
     <form method="POST" action="{{ route('admin.guru.import') }}" enctype="multipart/form-data">
         @csrf
         <div class="form-group" style="margin-bottom: var(--space-4);">
-            <label for="import_file" class="form-label">File CSV (.csv)</label>
-            <input type="file" id="import_file" name="csv_file" class="form-input" accept=".csv" required>
+            <label for="import_file" class="form-label">File CSV atau XLSX</label>
+            <input type="file" id="import_file" name="csv_file" class="form-input" accept=".csv,.xlsx,text/csv" required>
         </div>
         <div style="background: var(--color-bg-secondary, var(--color-surface-muted)); padding: var(--space-3); border-radius: var(--radius-md); margin-bottom: var(--space-4);">
-            <p style="font-size: var(--text-sm); font-weight: 500; margin-bottom: var(--space-2);">Format CSV:</p>
-            <code style="font-size: var(--text-xs); display: block; white-space: pre;">name,nip
-Budi Santoso,1987654321
-Siti Aminah,1987654322</code>
-            <p style="font-size: var(--text-xs); color: var(--color-text-muted); margin-top: var(--space-2);">Password default: <code>password</code>. NIP yang sudah ada akan dilewati.</p>
+            <p style="font-size: var(--text-sm); font-weight: 500; margin-bottom: var(--space-2);">Format kolom (import export XLSX / data-guru CSV):</p>
+            <code style="font-size: var(--text-xs); display: block; white-space: pre-wrap; word-break: break-word;">nama,nip,nipppk,nuptk,jenis_kelamin,agama,tempat_lahir,tanggal_lahir,status_kepegawaian,pangkat_golongan,jabatan,nik,alamat,no_hp,npwp,email,status,...</code>
+            <p style="font-size: var(--text-xs); color: var(--color-text-muted); margin-top: var(--space-2);">
+                Kolom opsional lain (TMT, KGB, sosial media, dll.) juga dikenali.
+                Baris dengan NIP kosong akan memakai NIPPPK/NUPTK/NIK sebagai username.
+                Password default: <code>password</code>. NIP yang sudah ada → data diupdate.
+            </p>
         </div>
         <div class="modal-footer" style="padding: 0; border: none;">
             <x-button variant="secondary" onclick="document.getElementById('importModal').classList.remove('active')">Batal</x-button>

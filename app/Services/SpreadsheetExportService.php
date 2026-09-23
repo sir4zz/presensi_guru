@@ -74,7 +74,9 @@ class SpreadsheetExportService
                 $sheet->getStyle("A{$r}")->getAlignment()->setHorizontal(Alignment::HORIZONTAL_CENTER);
                 $r++;
             }
-            $r++; // spasi sebelum tabel
+            if ($r > 1) {
+                $r++; // spasi sebelum tabel hanya jika ada kop/periode di atas
+            }
 
             $headerRow = $r;
             $sheet->fromArray([$headings], null, "A{$r}");
