@@ -7,14 +7,14 @@
 <div class="admin-attendance-page">
 <div class="page-header">
     <div>
-        <p class="page-subtitle">Data absensi seluruh guru</p>
+        <p class="page-subtitle">Absensi guru hari ini — {{ \Carbon\Carbon::parse($today)->locale('id')->translatedFormat('l, d F Y') }}</p>
     </div>
-    <div class="flex gap-3">
-        <x-button variant="secondary" id="exportBtn">
-            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
-            Export Absensi
-        </x-button>
-    </div>
+</div>
+
+<div class="alert alert-info" style="margin-bottom: var(--space-4);">
+    Halaman ini hanya menampilkan absensi <strong>hari ini</strong>.
+    Untuk melihat rekap harian, bulanan, atau tahunan dan export Excel, gunakan menu
+    <a href="{{ route('admin.report.index') }}"><strong>Laporan</strong></a>.
 </div>
 
 <div class="filter-bar">
@@ -22,7 +22,6 @@
         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
         <input type="text" class="form-input" placeholder="Cari nama atau NIP..." id="searchInput" onkeyup="filterTable()">
     </div>
-    <input type="date" class="form-input" id="dateFilter" value="{{ request('date', date('Y-m-d')) }}" onchange="applyFilters()">
     <select class="form-select" id="guruFilter" onchange="applyFilters()">
         <option value="">Semua Guru</option>
         @if(isset($gurus))
@@ -37,38 +36,11 @@
         <option value="terlambat" {{ request('status') == 'terlambat' ? 'selected' : '' }}>Terlambat</option>
         <option value="izin" {{ request('status') == 'izin' ? 'selected' : '' }}>Izin</option>
         <option value="sakit" {{ request('status') == 'sakit' ? 'selected' : '' }}>Sakit</option>
+        <option value="dinas_luar" {{ in_array(request('status'), ['dinas_luar', 'tugas_luar']) ? 'selected' : '' }}>Dinas Luar</option>
         <option value="tidak_ada_keterangan" {{ in_array(request('status'), ['tidak_ada_keterangan', 'alpha']) ? 'selected' : '' }}>TAK</option>
         <option value="pulang" {{ request('status') == 'pulang' ? 'selected' : '' }}>Sudah Pulang</option>
         <option value="belum" {{ request('status') == 'belum' ? 'selected' : '' }}>Belum Absen</option>
     </select>
-</div>
-<div class="attendance-export-options">
-    <label for="exportPeriod">Periode Export</label>
-    <select class="form-select" id="exportPeriod">
-        <option value="daily">Harian</option>
-        <option value="monthly">Bulanan</option>
-        <option value="yearly">Tahunan</option>
-    </select>
-    <span class="form-help">Harian: detail per record. Bulanan dan tahunan: rekap disiplin (APEL/TM/PS/JML HARI/TMTB/TOTAL).</span>
-</div>
-
-<div class="card monthly-attendance-card">
-    <div class="card-header">
-        <div><h3 class="card-title">Rekap Absensi Bulanan</h3></div>
-        <form method="GET" class="monthly-filter" style="display:flex; flex-direction:row; flex-wrap:nowrap; align-items:center; gap:8px; width:260px;">
-            @if(request('guru_id'))<input type="hidden" name="guru_id" value="{{ request('guru_id') }}">@endif
-            @if(request('status'))<input type="hidden" name="status" value="{{ request('status') }}">@endif
-            <select name="month" class="form-select" style="flex:1 1 0; width:auto; min-width:0;" onchange="this.form.submit()">@foreach(range(1,12) as $m)<option value="{{ $m }}" {{ $month === $m ? 'selected' : '' }}>{{ \Carbon\Carbon::create()->month($m)->locale('id')->translatedFormat('F') }}</option>@endforeach</select>
-            <select name="year" class="form-select" style="flex:1 1 0; width:auto; min-width:0;" onchange="this.form.submit()">@foreach(range(now()->year - 2, now()->year + 1) as $y)<option value="{{ $y }}" {{ $year === $y ? 'selected' : '' }}>{{ $y }}</option>@endforeach</select>
-        </form>
-    </div>
-    <div class="table-wrapper"><table class="table monthly-attendance-table">
-        <thead><tr><th>No</th><th>NIP</th><th>Nama</th><th>Apel</th><th>TM</th><th>PS</th><th>Jml Hari</th><th>TMTB</th><th>Total</th></tr></thead>
-        <tbody>@foreach($monthlyReport as $item)<tr>
-            <td>{{ $loop->iteration }}</td><td>{{ $item['guru']->username }}</td><td class="font-medium">{{ $item['guru']->name }}</td>
-            <td class="text-center">{{ $item['attendanceCount'] }}</td><td class="text-center">{{ $item['summary']['terlambat_menit'] }}</td><td class="text-center">{{ $item['summary']['pulang_awal_menit'] }}</td><td class="text-center">{{ round($item['summary']['konversi_hari']) }}</td><td class="text-center">{{ $item['summary']['tmtb'] }}</td><td class="text-center font-medium">{{ round($item['summary']['total_hari']) }}</td>
-        </tr>@endforeach</tbody>
-    </table></div>
 </div>
 
 @if(isset($missingGurus) && count($missingGurus) > 0)
@@ -104,7 +76,6 @@
         <table class="table" id="attendanceTable">
             <thead>
                 <tr>
-                    <th>Tanggal</th>
                     <th>Guru</th>
                     <th>NIP</th>
                     <th>Status</th>
@@ -116,8 +87,7 @@
             </thead>
             <tbody>
                 @foreach($attendances as $att)
-                        <tr data-name="{{ strtolower($att->guru->name ?? '') }}" data-nip="{{ $att->guru->username ?? '' }}" data-status="{{ $att->status }}" data-guru-id="{{ $att->guru_id }}" data-tanggal="{{ $att->tanggal }}" data-pulang="{{ $att->jam_pulang ? '1' : '' }}">
-                        <td>{{ \Carbon\Carbon::parse($att->tanggal)->format('d M Y') }}</td>
+                        <tr data-name="{{ strtolower($att->guru->name ?? '') }}" data-nip="{{ $att->guru->username ?? '' }}" data-status="{{ $att->status }}" data-guru-id="{{ $att->guru_id }}" data-pulang="{{ $att->jam_pulang ? '1' : '' }}">
                         <td class="font-medium">{{ $att->guru->name ?? '-' }}</td>
                         <td class="text-muted">{{ $att->guru->username ?? '-' }}</td>
                         <td>
@@ -153,8 +123,12 @@
             </tbody>
         </table>
     </div>
+
+    <div style="margin-top: var(--space-4);">
+        {{ $attendances->links() }}
+    </div>
 @else
-    <x-empty-state title="Belum ada data absensi" text="Data akan muncul setelah guru melakukan absensi." />
+    <x-empty-state title="Belum ada absensi hari ini" text="Data akan muncul setelah guru melakukan absensi hari ini." />
 @endif
 
 {{-- Modal Detail --}}
@@ -199,7 +173,9 @@
     </div>
     <div id="detail_foto_section" style="margin-top: var(--space-4); display: none;">
         <span class="account-field-label" style="display: block; margin-bottom: var(--space-2);">Foto</span>
-        <img id="detail_foto" src="" alt="Foto absensi" style="max-width: 200px; border-radius: var(--radius-md);">
+        <a id="detail_foto_link" href="#" target="_blank" title="Lihat ukuran penuh">
+            <img id="detail_foto" src="" alt="Foto absensi" loading="lazy" decoding="async" style="max-width: 200px; border-radius: var(--radius-md);">
+        </a>
     </div>
     <div class="modal-footer" style="padding: 0; border: none; margin-top: var(--space-6);">
         <x-button variant="secondary" onclick="document.getElementById('detailModal').classList.remove('active')">Tutup</x-button>
@@ -252,23 +228,6 @@
 
 @push('scripts')
 <script>
-document.getElementById('exportBtn').addEventListener('click', function() {
-    const guruId = document.getElementById('guruFilter').value;
-    const date = document.getElementById('dateFilter').value;
-    const status = document.getElementById('statusFilter').value;
-    const period = document.getElementById('exportPeriod').value;
-    const params = new URLSearchParams();
-    if (guruId) params.set('guru_id', guruId);
-    if (date) { params.set('date_from', date); params.set('date_to', date); }
-    if (status && period === 'daily') params.set('status', status);
-    params.set('period', period);
-    if (period !== 'daily') {
-        params.set('month', '{{ $month }}');
-        params.set('year', '{{ $year }}');
-    }
-    window.location.href = '{{ route("admin.attendance.export") }}?' + params.toString();
-});
-
 function openDetailModal(att) {
     document.getElementById('detail_guru').textContent = att.guru?.name || '-';
     document.getElementById('detail_nip').textContent = att.guru?.username || '-';
@@ -284,7 +243,9 @@ function openDetailModal(att) {
 
     const fotoSection = document.getElementById('detail_foto_section');
     if (att.foto_masuk) {
-        document.getElementById('detail_foto').src = '/storage/' + att.foto_masuk;
+        // Thumbnail kecil untuk daftar; full-size hanya saat link diklik.
+        document.getElementById('detail_foto').src = '/storage/' + (att.foto_masuk_thumb || att.foto_masuk);
+        document.getElementById('detail_foto_link').href = '/storage/' + att.foto_masuk;
         fotoSection.style.display = 'block';
     } else {
         fotoSection.style.display = 'none';
@@ -305,37 +266,22 @@ function openEditModal(att) {
 
 function filterTable() {
     const search = document.getElementById('searchInput').value.toLowerCase();
-    const statusFilter = document.getElementById('statusFilter').value;
     const rows = document.querySelectorAll('#attendanceTable tbody tr');
 
     rows.forEach(row => {
         const name = row.dataset.name || '';
-        const nip = row.dataset.nip || '';
-        const status = row.dataset.status || '';
-        const pulang = row.dataset.pulang || '';
+        const nip = (row.dataset.nip || '').toLowerCase();
         const matchSearch = name.includes(search) || nip.includes(search);
-        let matchStatus = true;
-        if (statusFilter === 'tidak_ada_keterangan') {
-            matchStatus = status === 'alpha' || status === 'tidak_ada_keterangan';
-        } else if (statusFilter === 'pulang') {
-            matchStatus = pulang === '1';
-        } else if (statusFilter === 'belum') {
-            matchStatus = false;
-        } else if (statusFilter) {
-            matchStatus = status === statusFilter;
-        }
-        row.style.display = matchSearch && matchStatus ? '' : 'none';
+        row.style.display = matchSearch ? '' : 'none';
     });
 }
 
 function applyFilters() {
     const guruId = document.getElementById('guruFilter').value;
-    const date = document.getElementById('dateFilter').value;
     const status = document.getElementById('statusFilter').value;
-    const params = new URLSearchParams(window.location.search);
-    if (guruId) params.set('guru_id', guruId); else params.delete('guru_id');
-    if (date) params.set('date', date); else params.delete('date');
-    if (status) params.set('status', status); else params.delete('status');
+    const params = new URLSearchParams();
+    if (guruId) params.set('guru_id', guruId);
+    if (status) params.set('status', status);
     window.location.search = params.toString();
 }
 </script>

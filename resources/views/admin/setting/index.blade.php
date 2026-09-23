@@ -34,7 +34,7 @@
                 <label for="school_logo" class="form-label">Logo Sekolah</label>
                 <input type="file" id="school_logo" name="school_logo" class="form-input" accept="image/*">
                 @if($settings->school_logo ?? null)
-                    <img src="{{ Storage::url($settings->school_logo) }}" alt="Logo" style="max-width: 80px; margin-top: var(--space-2); border-radius: var(--radius-md);">
+                    <img src="{{ Storage::url($settings->school_logo) }}" alt="Logo" loading="lazy" decoding="async" style="max-width: 80px; margin-top: var(--space-2); border-radius: var(--radius-md);">
                 @endif
             </div>
         </div>

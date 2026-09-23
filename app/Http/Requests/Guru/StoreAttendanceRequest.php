@@ -17,7 +17,7 @@ class StoreAttendanceRequest extends FormRequest
             'latitude' => 'required|numeric|between:-90,90',
             'longitude' => 'required|numeric|between:-180,180',
             'accuracy' => 'nullable|numeric|min:0',
-            'selfie' => 'required|image|mimes:jpeg,jpg,png|max:2048',
+            'selfie' => 'required|image|mimes:jpeg,jpg,png,webp|max:5120',
         ];
     }
 
@@ -30,8 +30,8 @@ class StoreAttendanceRequest extends FormRequest
             'longitude.between' => 'Longitude tidak valid.',
             'selfie.required' => 'Foto selfie wajib diambil.',
             'selfie.image' => 'File harus berupa gambar.',
-            'selfie.mimes' => 'Format gambar harus JPEG atau PNG.',
-            'selfie.max' => 'Ukuran gambar maksimal 2MB.',
+            'selfie.mimes' => 'Format gambar harus JPEG, PNG, atau WebP.',
+            'selfie.max' => 'Ukuran gambar maksimal 5MB.',
         ];
     }
 }

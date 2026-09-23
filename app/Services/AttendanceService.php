@@ -8,7 +8,7 @@ use App\Models\Holiday;
 use App\Models\SchoolSetting;
 use App\Models\User;
 use Illuminate\Support\Facades\DB;
-use Illuminate\Support\Facades\Storage;
+use Illuminate\Support\Facades\Log;
 
 class AttendanceService
 {
@@ -22,7 +22,7 @@ class AttendanceService
 
     protected array $settings;
 
-    public function __construct()
+    public function __construct(protected FileUploadService $files)
     {
         $this->loadSettings();
     }
@@ -69,6 +69,12 @@ class AttendanceService
 
             $radius = (int) $this->settings['attendance_radius'];
             if ($distance > $radius) {
+                $this->logFailedAttempt($user, 'masuk', 'di luar radius', [
+                    'jarak_meter' => round($distance),
+                    'radius_meter' => $radius,
+                    'latitude' => $data['latitude'],
+                    'longitude' => $data['longitude'],
+                ]);
                 return [
                     'success' => false,
                     'message' => "Anda berada di luar radius sekolah. Jarak: " . round($distance) . "m (maks: {$radius}m)",
@@ -81,25 +87,40 @@ class AttendanceService
             $jamMasukShort = substr($jamMasuk, 0, 5);
 
             if ($jamMasukShort > $lateUntil) {
+                $this->logFailedAttempt($user, 'masuk', 'melewati batas waktu', [
+                    'jam_server' => $jamMasukShort,
+                    'batas_masuk' => $lateUntil,
+                ]);
                 return ['success' => false, 'message' => 'Batas waktu absen masuk telah lewat (' . $lateUntil . '). Anda tidak dapat melakukan absensi.', 'code' => 422];
             }
 
             $status = $this->determineStatus($jamMasuk);
 
-            $attendance = Attendance::create([
-                'guru_id' => $user->id,
-                'tanggal' => $today,
-                'status' => $status->value,
-                'jam_masuk' => $jamMasuk,
-                'lat_masuk' => $data['latitude'],
-                'lng_masuk' => $data['longitude'],
-                'distance_masuk' => round($distance, 2),
-                'accuracy_masuk' => $data['accuracy'] ?? null,
-            ]);
+            // Optimasi + simpan foto DULU: bila gagal, tidak ada record
+            // yatim tanpa foto dan transaksi rollback dengan bersih.
+            try {
+                $photoPath = $this->files->storeSelfie($data['selfie']);
+            } catch (FileUploadException $e) {
+                return ['success' => false, 'message' => $e->getMessage(), 'code' => 422];
+            }
 
-            $filename = 'selfie_' . $user->id . '_' . time() . '_' . bin2hex(random_bytes(4)) . '.' . $data['selfie']->getClientOriginalExtension();
-            $path = $data['selfie']->storeAs('attendance/selfie', $filename, 'public');
-            $attendance->update(['foto_masuk' => $path]);
+            try {
+                $attendance = Attendance::create([
+                    'guru_id' => $user->id,
+                    'tanggal' => $today,
+                    'status' => $status->value,
+                    'jam_masuk' => $jamMasuk,
+                    'foto_masuk' => $photoPath,
+                    'lat_masuk' => $data['latitude'],
+                    'lng_masuk' => $data['longitude'],
+                    'distance_masuk' => round($distance, 2),
+                    'accuracy_masuk' => $data['accuracy'] ?? null,
+                ]);
+            } catch (\Throwable $e) {
+                // DB gagal (mis. race unique) — hapus foto agar tidak orphan.
+                $this->files->deleteFile($photoPath);
+                throw $e;
+            }
 
             return [
                 'success' => true,
@@ -135,16 +156,31 @@ class AttendanceService
 
             // Hanya status kehadiran (masuk) yang boleh absen pulang.
             if (!in_array($attendance->status, [AttendanceStatus::Hadir->value, AttendanceStatus::Terlambat->value], true)) {
+                $this->logFailedAttempt($user, 'pulang', 'status tidak memenuhi syarat', [
+                    'status_absensi' => $attendance->status,
+                ]);
                 return ['success' => false, 'message' => 'Absensi pulang hanya untuk kehadiran masuk (Hadir/Terlambat).', 'code' => 422];
             }
 
-            // Pulang sebelum checkout_start_time tetap diperbolehkan agar PS tercatat.
+            // Jendela absensi pulang: checkout_start_time s.d. 17:00 WIB.
             $now = now(); // timezone mengikuti config app Asia/Jakarta
             $serverTime = $now->format('H:i');
             $checkoutStart = substr((string) ($this->settings['checkout_start_time'] ?? '15:00'), 0, 5);
             $checkoutEnd = substr(self::CHECKOUT_END_TIME, 0, 5);
 
+            if ($serverTime < $checkoutStart) {
+                $this->logFailedAttempt($user, 'pulang', 'sebelum jendela pulang dibuka', [
+                    'jam_server' => $serverTime,
+                    'jendela_pulang' => $checkoutStart.'–'.$checkoutEnd,
+                ]);
+                return ['success' => false, 'message' => 'Absensi pulang belum dibuka. Mulai pukul ' . $checkoutStart . ' WIB.', 'code' => 422];
+            }
+
             if ($serverTime > $checkoutEnd) {
+                $this->logFailedAttempt($user, 'pulang', 'melewati batas pulang', [
+                    'jam_server' => $serverTime,
+                    'jendela_pulang' => $checkoutStart.'–'.$checkoutEnd,
+                ]);
                 return ['success' => false, 'message' => 'Waktu absensi pulang sudah berakhir (batas ' . $checkoutEnd . ' WIB).', 'code' => 422];
             }
 
@@ -155,6 +191,12 @@ class AttendanceService
 
             $radius = (int) $this->settings['attendance_radius'];
             if ($distance > $radius) {
+                $this->logFailedAttempt($user, 'pulang', 'di luar radius', [
+                    'jarak_meter' => round($distance),
+                    'radius_meter' => $radius,
+                    'latitude' => $data['latitude'],
+                    'longitude' => $data['longitude'],
+                ]);
                 return [
                     'success' => false,
                     'message' => "Anda berada di luar radius sekolah. Jarak: " . round($distance) . "m (maks: {$radius}m)",
@@ -162,17 +204,21 @@ class AttendanceService
                 ];
             }
 
+            // Foto diproses dulu agar tidak ada update jam tanpa foto bila optimasi gagal.
+            try {
+                $photoPath = $this->files->storeSelfie($data['selfie']);
+            } catch (FileUploadException $e) {
+                return ['success' => false, 'message' => $e->getMessage(), 'code' => 422];
+            }
+
             $attendance->update([
                 'jam_pulang' => $now->format('H:i:s'),
+                'foto_pulang' => $photoPath,
                 'lat_pulang' => $data['latitude'],
                 'lng_pulang' => $data['longitude'],
                 'distance_pulang' => round($distance, 2),
                 'accuracy_pulang' => $data['accuracy'] ?? null,
             ]);
-
-            $filename = 'selfie_' . $user->id . '_' . time() . '_' . bin2hex(random_bytes(4)) . '.' . $data['selfie']->getClientOriginalExtension();
-            $path = $data['selfie']->storeAs('attendance/selfie', $filename, 'public');
-            $attendance->update(['foto_pulang' => $path]);
 
             return [
                 'success' => true,
@@ -292,6 +338,32 @@ class AttendanceService
     }
 
     /**
+     * Catat percobaan absensi gagal yang relevan untuk deteksi manipulasi
+     * (di luar radius, pelanggaran jendela waktu). Absensi sukses TIDAK
+     * dicatat agar tabel audit_logs tetap ramping.
+     *
+     * Sengaja tidak pernah melempar exception: kegagalan logging tidak
+     * boleh menggagalkan alur absensi.
+     */
+    protected function logFailedAttempt(User $user, string $type, string $reason, array $context = []): void
+    {
+        try {
+            AuditLogService::log(
+                'absensi_gagal',
+                'absensi',
+                "Gagal absen {$type} — {$user->name}: {$reason}.",
+                null,
+                array_merge(['tipe' => $type, 'alasan' => $reason, 'ip' => request()->ip()], $context)
+            );
+        } catch (\Throwable $e) {
+            Log::warning('Gagal mencatat audit log percobaan absensi.', [
+                'guru_id' => $user->id,
+                'error' => $e->getMessage(),
+            ]);
+        }
+    }
+
+    /**
      * Status jendela absensi pulang berdasarkan waktu server Asia/Jakarta.
      * @return array{start:string,end:string,server_time:string,status:string,can_checkout:bool}
      */
@@ -325,7 +397,9 @@ class AttendanceService
         $start = substr((string) ($this->settings['checkout_start_time'] ?? '15:00'), 0, 5);
         $end = substr(self::CHECKOUT_END_TIME, 0, 5);
 
-        if ($serverTime > $end) {
+        if ($serverTime < $start) {
+            $status = 'too_early';
+        } elseif ($serverTime > $end) {
             $status = 'closed';
         } else {
             $status = 'open';

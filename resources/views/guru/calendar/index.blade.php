@@ -192,7 +192,7 @@
             if (att.foto_masuk) {
                 html += '<div style="display: flex; align-items: center; gap: var(--space-2);">';
                 html += '<span style="font-size: var(--text-sm); color: var(--color-text-muted); min-width: 80px;">Foto</span>';
-                html += '<img src="/storage/' + att.foto_masuk + '" alt="Foto" style="width:48px;height:48px;border-radius:var(--radius-md);object-fit:cover;"></div>';
+                html += '<a href="/storage/' + att.foto_masuk + '" target="_blank"><img src="/storage/' + (att.foto_masuk_thumb || att.foto_masuk) + '" alt="Foto" loading="lazy" decoding="async" style="width:48px;height:48px;border-radius:var(--radius-md);object-fit:cover;"></a></div>';
             }
             if (att.distance_masuk) {
                 html += '<div style="display: flex; align-items: center; gap: var(--space-2);">';

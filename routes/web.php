@@ -16,6 +16,7 @@ use App\Http\Controllers\Guru\DashboardController as GuruDashboardController;
 use App\Http\Controllers\Guru\AttendanceController as GuruAttendanceController;
 use App\Http\Controllers\Guru\HistoryController;
 use App\Http\Controllers\Guru\CalendarController;
+use App\Http\Controllers\Guru\DinasLuarController;
 use App\Http\Controllers\Guru\ProfileController as GuruProfileController;
 
 // Guest routes
@@ -115,8 +116,7 @@ Route::prefix('admin')->name('admin.')->middleware(['auth', 'role:admin'])->grou
     Route::delete('/guru/{id}', [GuruController::class, 'destroy'])->name('guru.delete');
     Route::post('/guru/import', [GuruController::class, 'import'])->name('guru.import');
 
-    // Attendance
-    Route::get('/absensi/export', [AttendanceController::class, 'export'])->name('attendance.export');
+    // Attendance — khusus pantauan hari ini. Export/rekap ada di menu Laporan.
     Route::get('/absensi', [AttendanceController::class, 'index'])->name('attendance.index');
     Route::get('/absensi/{id}', [AttendanceController::class, 'show'])->name('attendance.show');
     Route::put('/absensi/{id}', [AttendanceController::class, 'update'])->name('attendance.update');
@@ -172,6 +172,11 @@ Route::prefix('guru')->name('guru.')->middleware(['auth', 'role:guru'])->group(f
 
     // Calendar
     Route::get('/kalender', [CalendarController::class, 'index'])->name('calendar.index');
+
+    // Kedinasan (Dinas Luar) — halaman biasa, bukan bottom nav.
+    Route::get('/kedinasan', [DinasLuarController::class, 'create'])->name('kedinasan.index');
+    Route::post('/kedinasan', [DinasLuarController::class, 'store'])->name('kedinasan.store');
+    Route::delete('/kedinasan/{attendance}', [DinasLuarController::class, 'destroy'])->name('kedinasan.destroy');
 
     // Profile & Password
     Route::get('/profil', [GuruProfileController::class, 'index'])->name('profile');

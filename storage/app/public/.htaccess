@@ -1,0 +1,20 @@
+# Blokir eksekusi script di direktori upload publik (defense in depth;
+# file upload sudah memakai nama random + ekstensi gambar/pdf terverifikasi).
+<IfModule mod_php.c>
+    php_flag engine off
+</IfModule>
+<IfModule mod_php7.c>
+    php_flag engine off
+</IfModule>
+<IfModule mod_php8.c>
+    php_flag engine off
+</IfModule>
+<FilesMatch "\.(php|phtml|phar|cgi|pl|py|sh|exe|bat)$">
+    <IfModule mod_authz_core.c>
+        Require all denied
+    </IfModule>
+    <IfModule !mod_authz_core.c>
+        Order allow,deny
+        Deny from all
+    </IfModule>
+</FilesMatch>

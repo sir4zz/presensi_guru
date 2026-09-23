@@ -96,13 +96,17 @@
             @if($attendance->foto_masuk)
                 <div class="account-field">
                     <span class="account-field-label">Foto Masuk</span>
-                    <img src="{{ Storage::url($attendance->foto_masuk) }}" alt="Foto Masuk" style="max-width: 200px; border-radius: var(--radius-md);">
+                    <a href="{{ Storage::url($attendance->foto_masuk) }}" target="_blank" title="Lihat ukuran penuh">
+                        <img src="{{ Storage::url($attendance->foto_masuk_thumb) }}" alt="Foto Masuk" loading="lazy" decoding="async" style="max-width: 200px; border-radius: var(--radius-md);">
+                    </a>
                 </div>
             @endif
             @if($attendance->foto_pulang)
                 <div class="account-field">
                     <span class="account-field-label">Foto Pulang</span>
-                    <img src="{{ Storage::url($attendance->foto_pulang) }}" alt="Foto Pulang" style="max-width: 200px; border-radius: var(--radius-md);">
+                    <a href="{{ Storage::url($attendance->foto_pulang) }}" target="_blank" title="Lihat ukuran penuh">
+                        <img src="{{ Storage::url($attendance->foto_pulang_thumb) }}" alt="Foto Pulang" loading="lazy" decoding="async" style="max-width: 200px; border-radius: var(--radius-md);">
+                    </a>
                 </div>
             @endif
         </div>
