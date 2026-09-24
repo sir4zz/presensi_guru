@@ -3,16 +3,21 @@
 namespace App\Http\Controllers\Admin;
 
 use App\Http\Controllers\Controller;
+use App\Models\Attendance;
 use App\Models\SchoolSetting;
 use App\Services\AttendanceReportService;
 use App\Services\AuditLogService;
+use App\Services\FileUploadService;
 use App\Services\SpreadsheetExportService;
 use Carbon\Carbon;
+use Illuminate\Support\Facades\DB;
 
 class ReportController extends Controller
 {
-    public function __construct(protected AttendanceReportService $reports)
-    {
+    public function __construct(
+        protected AttendanceReportService $reports,
+        protected FileUploadService $files
+    ) {
     }
 
     public function index()
@@ -156,6 +161,124 @@ class ReportController extends Controller
 
         AuditLogService::log('export', 'laporan', "Export laporan bulanan {$month}-{$year} ke XLSX");
         return $excel->downloadSheets(sprintf('rekap_bulanan_%02d_%04d.xlsx', $month, $year), $sheets, $meta);
+    }
+
+    /** Preview purge: hitung record + file terdampak tanpa menghapus. */
+    public function purgePreview()
+    {
+        $scope = $this->validatedPurgeScope();
+        if ($scope === null) {
+            return response()->json(['message' => 'Parameter periode tidak valid.'], 422);
+        }
+        [$query, $label] = $this->purgeQuery($scope);
+
+        $records = (clone $query)->count();
+        $files = (clone $query)->select(['foto_masuk', 'foto_pulang', 'bukti_file', 'surat_tugas_file'])
+            ->get()
+            ->flatMap(fn ($a) => [$a->foto_masuk, $a->foto_pulang, $a->bukti_file, $a->surat_tugas_file])
+            ->filter()->unique()->count();
+
+        return response()->json([
+            'records' => $records, 'files' => $files, 'label' => $label,
+        ]);
+    }
+
+    /** Purge absensi per periode. Destruktif: wajib konfirmasi HAPUS. */
+    public function purge()
+    {
+        $confirm = request('confirm');
+        if ($confirm !== 'HAPUS') {
+            return response()->json(['success' => false, 'message' => 'Konfirmasi tidak valid. Ketik HAPUS untuk melanjutkan.'], 422);
+        }
+
+        $scope = $this->validatedPurgeScope();
+        if ($scope === null) {
+            return response()->json(['success' => false, 'message' => 'Parameter periode tidak valid.'], 422);
+        }
+        [$query, $label] = $this->purgeQuery($scope);
+
+        $paths = [];
+        $deleted = 0;
+        DB::transaction(function () use ($query, &$paths, &$deleted) {
+            $query->clone()->orderBy('id')->chunk(200, function ($rows) use (&$paths, &$deleted) {
+                foreach ($rows as $row) {
+                    foreach ([$row->foto_masuk, $row->foto_pulang, $row->bukti_file, $row->surat_tugas_file] as $path) {
+                        if ($path) {
+                            $paths[] = $path;
+                        }
+                    }
+                }
+                $deleted += $rows->count();
+                Attendance::whereIn('id', $rows->pluck('id'))->delete();
+            });
+        });
+
+        $cleaned = 0;
+        foreach (array_unique($paths) as $path) {
+            $this->files->deleteFileIfOrphan($path);
+            $cleaned++;
+        }
+
+        AuditLogService::log('delete', 'absensi', "Purge absensi {$label}: {$deleted} record + {$cleaned} file dibersihkan.");
+
+        return response()->json([
+            'success' => true,
+            'message' => "Purge selesai: {$deleted} record {$label} dihapus.",
+        ]);
+    }
+
+    /**
+     * Validasi parameter cakupan purge dari filter laporan.
+     * @return array{scope:string,date:?string,month:?int,year:?int,guru_id:?int}|null
+     */
+    protected function validatedPurgeScope(): ?array
+    {
+        $data = validator(request()->all(), [
+            'scope' => 'required|in:day,month,year',
+            'date' => 'nullable|date_format:Y-m-d',
+            'month' => 'nullable|integer|min:1|max:12',
+            'year' => 'nullable|integer|min:2000|max:2100',
+            'guru_id' => 'nullable|integer|exists:users,id',
+        ])->validate();
+
+        if ($data['scope'] === 'day' && empty($data['date'])) {
+            return null;
+        }
+        if ($data['scope'] === 'month' && (empty($data['month']) || empty($data['year']))) {
+            return null;
+        }
+        if ($data['scope'] === 'year' && empty($data['year'])) {
+            return null;
+        }
+
+        return $data;
+    }
+
+    /**
+     * Bangun query purge HANYA dari parameter tervalidasi (bukan input mentah).
+     * @return array{\Illuminate\Database\Eloquent\Builder,string}
+     */
+    protected function purgeQuery(array $scope): array
+    {
+        $query = Attendance::query();
+        $guru = ! empty($scope['guru_id']) ? \App\Models\User::find($scope['guru_id']) : null;
+        if ($guru) {
+            $query->where('guru_id', $guru->id);
+        }
+        $who = $guru ? " ({$guru->name})" : '';
+
+        if ($scope['scope'] === 'day') {
+            $query->whereDate('tanggal', $scope['date']);
+            $label = 'harian ' . Carbon::parse($scope['date'])->locale('id')->translatedFormat('d F Y') . $who;
+        } elseif ($scope['scope'] === 'month') {
+            $query->whereMonth('tanggal', $scope['month'])->whereYear('tanggal', $scope['year']);
+            $label = 'bulanan ' . Carbon::create($scope['year'], $scope['month'], 1)->locale('id')->translatedFormat('F Y') . $who;
+        } else {
+            $query->whereYear('tanggal', $scope['year']);
+            $label = 'tahunan ' . $scope['year'] . $who;
+        }
+
+        return [$query, $label];
     }
 
     /** Baris kop dari pengaturan sekolah. */

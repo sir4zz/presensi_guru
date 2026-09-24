@@ -118,21 +118,27 @@ Route::prefix('admin')->name('admin.')->middleware(['auth', 'role:admin'])->grou
     Route::delete('/guru/{id}', [GuruController::class, 'destroy'])->name('guru.delete');
     Route::post('/guru/import', [GuruController::class, 'import'])->name('guru.import');
 
-    // Attendance — khusus pantauan hari ini. Export/rekap ada di menu Laporan.
+    // Attendance — pantauan harian + hapus satuan/massal terpilih.
+    // Rekap bulanan/tahunan + export + purge periode ada di menu Laporan.
     Route::get('/absensi', [AttendanceController::class, 'index'])->name('attendance.index');
     Route::get('/absensi/{id}', [AttendanceController::class, 'show'])->name('attendance.show');
     Route::put('/absensi/{id}', [AttendanceController::class, 'update'])->name('attendance.update');
+    Route::delete('/absensi/{id}', [AttendanceController::class, 'destroy'])->name('attendance.delete');
+    Route::post('/absensi/bulk', [AttendanceController::class, 'bulkDestroy'])->name('attendance.bulk-delete');
     Route::post('/absensi/{attendance}/verifikasi-dinas', [AttendanceController::class, 'verifyDinas'])->name('attendance.verify-dinas');
     Route::post('/absensi/{attendance}/tolak-dinas', [AttendanceController::class, 'rejectDinas'])->name('attendance.reject-dinas');
 
     // Permission
     Route::get('/izin', [PermissionController::class, 'index'])->name('permission.index');
     Route::post('/izin', [PermissionController::class, 'store'])->name('permission.store');
+    Route::put('/izin/{id}', [PermissionController::class, 'update'])->name('permission.update');
     Route::delete('/izin/{id}', [PermissionController::class, 'destroy'])->name('permission.delete');
 
     // Report
     Route::get('/laporan', [ReportController::class, 'index'])->name('report.index');
     Route::get('/laporan/export', [ReportController::class, 'export'])->name('report.export');
+    Route::get('/laporan/purge-preview', [ReportController::class, 'purgePreview'])->name('report.purge-preview');
+    Route::post('/laporan/purge', [ReportController::class, 'purge'])->name('report.purge');
 
     // Settings
     Route::get('/pengaturan', [SettingController::class, 'index'])->name('setting.index');

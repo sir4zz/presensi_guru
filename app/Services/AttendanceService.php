@@ -56,7 +56,7 @@ class AttendanceService
                 return ['success' => false, 'message' => 'Anda sudah absen masuk hari ini.', 'code' => 422];
             }
 
-            // Tanggal merah (Minggu/libur): sistem absensi ditutup.
+            // Tanggal merah (Sabtu/Minggu/libur): sistem absensi ditutup.
             $redDate = $this->isRedDate($today);
             if ($redDate['is_red']) {
                 return ['success' => false, 'message' => 'Sistem absensi ditutup. Hari ini ' . $redDate['reason'] . '.', 'code' => 422];
@@ -368,7 +368,7 @@ class AttendanceService
      * @return array{start:string,end:string,server_time:string,status:string,can_checkout:bool}
      */
     /**
-     * Cek apakah tanggal adalah tanggal merah (hari Minggu atau hari libur).
+     * Cek apakah tanggal adalah tanggal merah (hari Sabtu/Minggu atau hari libur).
      * Waktu mengikuti timezone server Asia/Jakarta.
      *
      * @return array{is_red:bool,reason:string|null,holiday:\App\Models\Holiday|null}
@@ -377,8 +377,12 @@ class AttendanceService
     {
         $date ??= now()->toDateString();
 
-        if (\Carbon\Carbon::parse($date)->dayOfWeek === 0) {
+        $dayOfWeek = \Carbon\Carbon::parse($date)->dayOfWeek;
+        if ($dayOfWeek === 0) {
             return ['is_red' => true, 'reason' => 'hari Minggu', 'holiday' => null];
+        }
+        if ($dayOfWeek === 6) {
+            return ['is_red' => true, 'reason' => 'hari Sabtu', 'holiday' => null];
         }
 
         $holiday = Holiday::whereDate('date', $date)->first();

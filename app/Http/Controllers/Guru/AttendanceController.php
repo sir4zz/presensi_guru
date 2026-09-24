@@ -43,7 +43,7 @@ class AttendanceController extends Controller
         $isCheckIn = !$todayAttendance || !$todayAttendance->jam_masuk;
         $hasCheckedOut = (bool) ($todayAttendance?->jam_pulang);
 
-        // Tanggal merah (Minggu/libur): sistem absensi ditutup.
+        // Tanggal merah (Sabtu/Minggu/libur): sistem absensi ditutup.
         $redDate = $this->attendanceService->isRedDate(now()->toDateString());
         return view('guru.attendance.create', compact(
             'todayAttendance', 'schoolSettings',

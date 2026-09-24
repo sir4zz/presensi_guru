@@ -10,7 +10,7 @@ class Attendance extends Model
     protected $casts = ['dinas_verified_at' => 'datetime'];
 
     /** Thumb path ikut terserialisasi agar daftar/modal bisa memuat thumbnail kecil. */
-    protected $appends = ['foto_masuk_thumb', 'foto_pulang_thumb'];
+    protected $appends = ['foto_masuk_thumb', 'foto_pulang_thumb', 'bukti_thumb'];
     protected $fillable = [
         'guru_id',
         'tanggal',

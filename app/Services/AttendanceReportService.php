@@ -14,7 +14,7 @@ use Illuminate\Support\Collection;
  * Layanan rekap laporan kehadiran terpusat.
  *
  * Menggantikan logika duplikat di ReportController & AttendanceController:
- * - definisi hari kerja tunggal (Senin-Sabtu minus libur, Minggu selalu libur)
+ * - definisi hari kerja tunggal (Senin-Jumat minus libur, Sabtu/Minggu selalu libur)
  * - agregasi 2-3 query (tanpa N+1 per guru, sesuai PRD #64)
  * - status legacy 'tidak_ada_keterangan' dinormalisasi ke 'alpha'
  * - Dinas Luar kolom terpisah, tidak masuk APEL/% (keputusan produk)
@@ -74,9 +74,9 @@ class AttendanceReportService
         $days = [];
         $cursor = $start->copy();
         while ($cursor->lte($end)) {
-            $isSunday = $cursor->dayOfWeek === Carbon::SUNDAY;
+            $isWeekend = $cursor->dayOfWeek === Carbon::SATURDAY || $cursor->dayOfWeek === Carbon::SUNDAY;
             $isHoliday = $holidays->has($cursor->toDateString());
-            if (!$isSunday && !$isHoliday) {
+            if (!$isWeekend && !$isHoliday) {
                 $days[] = $cursor->toDateString();
             }
             $cursor->addDay();
@@ -223,9 +223,11 @@ class AttendanceReportService
     public function dailyReport(string $date, ?int $guruId = null, ?string $statusFilter = null): array
     {
         $status = self::normalizeStatus($statusFilter);
-        $isSunday = Carbon::parse($date)->dayOfWeek === Carbon::SUNDAY;
+        $dayOfWeek = Carbon::parse($date)->dayOfWeek;
+        $isSunday = $dayOfWeek === Carbon::SUNDAY;
+        $isSaturday = $dayOfWeek === Carbon::SATURDAY;
         $holiday = Holiday::whereDate('date', $date)->first();
-        $isWorkday = !$isSunday && !$holiday;
+        $isWorkday = !$isSunday && !$isSaturday && !$holiday;
 
         $attendances = Attendance::with('guru.guruProfile')
             ->whereDate('tanggal', $date)
@@ -250,6 +252,7 @@ class AttendanceReportService
             'date' => $date,
             'is_workday' => $isWorkday,
             'is_sunday' => $isSunday,
+            'is_saturday' => $isSaturday,
             'holiday' => $holiday,
             'attendances' => $attendances,
             'missing' => ($status || !$isWorkday) ? collect() : $missing,

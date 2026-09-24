@@ -131,9 +131,10 @@
             var dateObj = new Date(year, month - 1, day);
             var dayOfWeek = dateObj.getDay();
             var isSunday = dayOfWeek === 0;
+            var isSaturday = dayOfWeek === 6;
             var isHoliday = holidayMap[dateStr] !== undefined;
 
-            if (isSunday) dayEl.classList.add('sunday');
+            if (isSunday || isSaturday) dayEl.classList.add('sunday');
             if (isHoliday) dayEl.classList.add('has-holiday');
 
             if (today.getDate() === day && today.getMonth() + 1 === month && today.getFullYear() === year) {
@@ -189,10 +190,17 @@
             html += '<div style="display: flex; align-items: center; gap: var(--space-2);">';
             html += '<span style="font-size: var(--text-sm); color: var(--color-text-muted); min-width: 80px;">Pulang</span>';
             html += '<span style="font-size: var(--text-sm); font-weight: 500;">' + (att.jam_pulang || '-') + '</span></div>';
-            if (att.foto_masuk) {
+            if (att.foto_masuk || att.foto_pulang) {
                 html += '<div style="display: flex; align-items: center; gap: var(--space-2);">';
                 html += '<span style="font-size: var(--text-sm); color: var(--color-text-muted); min-width: 80px;">Foto</span>';
-                html += '<a href="/storage/' + att.foto_masuk + '" target="_blank"><img src="/storage/' + (att.foto_masuk_thumb || att.foto_masuk) + '" alt="Foto" loading="lazy" decoding="async" style="width:48px;height:48px;border-radius:var(--radius-md);object-fit:cover;"></a></div>';
+                html += '<span style="display:inline-flex;gap:4px;">';
+                if (att.foto_masuk) {
+                    html += '<a href="/storage/' + att.foto_masuk + '" target="_blank" title="Foto masuk"><img src="/storage/' + (att.foto_masuk_thumb || att.foto_masuk) + '" alt="Foto masuk" loading="lazy" decoding="async" style="width:48px;height:48px;border-radius:var(--radius-md);object-fit:cover;"></a>';
+                }
+                if (att.foto_pulang) {
+                    html += '<a href="/storage/' + att.foto_pulang + '" target="_blank" title="Foto pulang"><img src="/storage/' + (att.foto_pulang_thumb || att.foto_pulang) + '" alt="Foto pulang" loading="lazy" decoding="async" style="width:48px;height:48px;border-radius:var(--radius-md);object-fit:cover;"></a>';
+                }
+                html += '</span></div>';
             }
             if (att.distance_masuk) {
                 html += '<div style="display: flex; align-items: center; gap: var(--space-2);">';

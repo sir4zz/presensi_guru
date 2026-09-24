@@ -441,6 +441,12 @@
         cameraCanvas.width = cameraPreview.videoWidth;
         cameraCanvas.height = cameraPreview.videoHeight;
         var ctx = cameraCanvas.getContext('2d');
+        // Balik horizontal: stream kamera depan ter-mirror, dan preview
+        // CSS sudah dibalik agar normal — samakan hasil simpanan dengan
+        // yang dilihat pengguna (tidak mirror). Jalur galeri tidak
+        // lewat sini sehingga foto galeri tetap apa adanya.
+        ctx.translate(cameraCanvas.width, 0);
+        ctx.scale(-1, 1);
         ctx.drawImage(cameraPreview, 0, 0);
         cameraCanvas.toBlob(function(blob) {
             capturedBlob = blob;

@@ -52,6 +52,8 @@ class CalendarController extends Controller
                 'jam_pulang' => $att->jam_pulang,
                 'foto_masuk' => $att->foto_masuk,
                 'foto_masuk_thumb' => $att->foto_masuk_thumb,
+                'foto_pulang' => $att->foto_pulang,
+                'foto_pulang_thumb' => $att->foto_pulang_thumb,
                 'lat_masuk' => $att->lat_masuk,
                 'lng_masuk' => $att->lng_masuk,
                 'distance_masuk' => $att->distance_masuk,

@@ -43,7 +43,7 @@
         </div>
 
         <div class="calendar-legend" style="margin-top: var(--space-4);">
-            <div class="calendar-legend-item"><span class="calendar-dot-legend" style="background:var(--color-danger);"></span> Minggu/Libur</div>
+            <div class="calendar-legend-item"><span class="calendar-dot-legend" style="background:var(--color-danger);"></span> Akhir Pekan/Libur</div>
             <div class="calendar-legend-item"><span class="calendar-dot-legend" style="background:var(--color-success);"></span> Hadir</div>
             <div class="calendar-legend-item"><span class="calendar-dot-legend" style="background:var(--color-warning);"></span> Terlambat</div>
             <div class="calendar-legend-item"><span class="calendar-dot-legend" style="background:var(--color-info);"></span> Izin</div>
@@ -130,14 +130,27 @@
     </div>
 </div>
 
-<x-modal id="holidayModal" title="Tambah Hari Libur" size="md">
+<x-modal id="holidayModal" title="Tambah Hari Libur" size="lg">
     <form id="holidayForm" action="{{ route('admin.holiday.store') }}" method="POST">
         @csrf
         <input type="hidden" name="_method" id="holiday_method" value="POST">
-        <div class="form-group" style="margin-bottom:var(--space-4);">
+        <div class="form-group" id="holidayDateSingle" style="margin-bottom:var(--space-4); display:none;">
             <label class="form-label">Tanggal *</label>
-            <input type="date" id="holiday_date" name="date" class="form-input" required>
+            <input type="date" id="holiday_date" name="date" class="form-input">
         </div>
+        <div class="form-group" id="holidayDatesMulti" style="margin-bottom:var(--space-4);">
+            <label class="form-label">Daftar Libur *</label>
+            <div style="display:grid;grid-template-columns:150px 1fr 120px 32px;gap:var(--space-2);margin-bottom:var(--space-2);font-size:var(--text-xs);color:var(--color-text-muted);">
+                <span>Tanggal</span><span>Nama Libur</span><span>Jenis</span><span></span>
+            </div>
+            <div id="holidayDatesList" style="display:flex;flex-direction:column;gap:var(--space-2);"></div>
+            <button type="button" class="btn btn-secondary btn-sm" id="addHolidayDateBtn" style="margin-top:var(--space-2); align-self:flex-start;">
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
+                Tambah tanggal
+            </button>
+            <span class="form-help">Tiap baris punya nama &amp; jenis sendiri. Keterangan bisa diisi per baris (opsional). Tanggal yang sudah ada dilewati otomatis.</span>
+        </div>
+        <div id="holidaySharedFields">
         <div class="form-group" style="margin-bottom:var(--space-4);">
             <label class="form-label">Nama Hari Libur *</label>
             <input type="text" id="holiday_name" name="name" class="form-input" required placeholder="Contoh: Hari Raya Idul Fitri">
@@ -153,6 +166,7 @@
                 <option value="daerah">Daerah</option>
                 <option value="sekolah">Sekolah</option>
             </select>
+        </div>
         </div>
         <div class="modal-footer" style="padding:0; border:none;">
             <button type="button" class="btn btn-secondary btn-md" onclick="document.getElementById('holidayModal').classList.remove('active')">Batal</button>
@@ -214,13 +228,14 @@
             var dateObj = new Date(year, month - 1, day);
             var dayOfWeek = dateObj.getDay();
             var isSunday = dayOfWeek === 0;
+            var isSaturday = dayOfWeek === 6;
             var isHoliday = holidayMap[dateStr] !== undefined;
             var isToday = today.getDate() === day && today.getMonth() + 1 === month && today.getFullYear() === year;
 
             var dayEl = document.createElement('button');
             dayEl.type = 'button';
             dayEl.className = 'calendar-day';
-            if (isSunday) dayEl.classList.add('sunday');
+            if (isSunday || isSaturday) dayEl.classList.add('sunday');
             if (isHoliday) dayEl.classList.add('has-holiday');
             if (isToday) dayEl.classList.add('today');
 
@@ -285,7 +300,7 @@
                         html += '<td>' + (a.jam_masuk || '-') + '</td>';
                         html += '<td>' + (a.jam_pulang || '-') + '</td>';
                         html += '<td>' + (a.distance_masuk ? a.distance_masuk + 'm' : '-') + '</td>';
-                        html += '<td>' + (a.foto_masuk ? '<a href="/storage/' + a.foto_masuk + '" target="_blank"><img src="/storage/' + (a.foto_masuk_thumb || a.foto_masuk) + '" alt="Foto" loading="lazy" decoding="async" style="width:32px;height:32px;border-radius:var(--radius-md);object-fit:cover;"></a>' : '-') + '</td>';
+                        html += '<td>' + (a.foto_masuk || a.foto_pulang ? '<span style="display:inline-flex;gap:4px;">' + (a.foto_masuk ? '<a href="/storage/' + a.foto_masuk + '" target="_blank" title="Foto masuk"><img src="/storage/' + (a.foto_masuk_thumb || a.foto_masuk) + '" alt="Foto masuk" loading="lazy" decoding="async" style="width:32px;height:32px;border-radius:var(--radius-md);object-fit:cover;"></a>' : '') + (a.foto_pulang ? '<a href="/storage/' + a.foto_pulang + '" target="_blank" title="Foto pulang"><img src="/storage/' + (a.foto_pulang_thumb || a.foto_pulang) + '" alt="Foto pulang" loading="lazy" decoding="async" style="width:32px;height:32px;border-radius:var(--radius-md);object-fit:cover;"></a>' : '') + '</span>' : '-') + '</td>';
                         html += '</tr>';
                     });
                     html += '</tbody></table></div>';
@@ -301,8 +316,90 @@
         holidayForm.reset();
         holidayForm.action = '{{ route("admin.holiday.store") }}';
         holidayMethod.value = 'POST';
+        document.getElementById('holidayDateSingle').style.display = 'none';
+        document.getElementById('holiday_date').removeAttribute('required');
+        document.getElementById('holidayDatesMulti').style.display = '';
+        document.getElementById('holidaySharedFields').style.display = 'none';
+        document.getElementById('holidaySharedFields').style.display = 'none';
+        document.getElementById('holiday_name').removeAttribute('required');
+        document.getElementById('holiday_type').removeAttribute('required');
+        document.getElementById('holidayDatesList').innerHTML = '';
+        holidayItemIdx = 0;
+        addHolidayDateRow('', '', 'nasional', '');
         holidayModal.querySelector('.card-title, .modal-title, h3').textContent = 'Tambah Hari Libur';
         holidayModal.classList.add('active');
+    });
+
+    var holidayItemIdx = 0;
+
+    function addHolidayDateRow(date, name, type, description) {
+        var list = document.getElementById('holidayDatesList');
+        var idx = holidayItemIdx++;
+        var wrap = document.createElement('div');
+        wrap.style.display = 'flex';
+        wrap.style.flexDirection = 'column';
+        wrap.style.gap = 'var(--space-1)';
+        wrap.style.padding = 'var(--space-2)';
+        wrap.style.border = '1px solid var(--color-border-light)';
+        wrap.style.borderRadius = 'var(--radius-md)';
+
+        var row = document.createElement('div');
+        row.style.display = 'grid';
+        row.style.gridTemplateColumns = '150px 1fr 120px 32px';
+        row.style.gap = 'var(--space-2)';
+        row.style.alignItems = 'center';
+
+        var dateInput = document.createElement('input');
+        dateInput.type = 'date';
+        dateInput.className = 'form-input';
+        dateInput.name = 'items[' + idx + '][date]';
+        dateInput.min = '2020-01-01';
+        dateInput.value = date || '';
+
+        var nameInput = document.createElement('input');
+        nameInput.type = 'text';
+        nameInput.className = 'form-input';
+        nameInput.name = 'items[' + idx + '][name]';
+        nameInput.placeholder = 'Nama libur';
+        nameInput.value = name || '';
+
+        var typeSelect = document.createElement('select');
+        typeSelect.className = 'form-select';
+        typeSelect.name = 'items[' + idx + '][type]';
+        ['nasional', 'daerah', 'sekolah'].forEach(function(t) {
+            var opt = document.createElement('option');
+            opt.value = t;
+            opt.textContent = t.charAt(0).toUpperCase() + t.slice(1);
+            if (t === (type || 'nasional')) opt.selected = true;
+            typeSelect.appendChild(opt);
+        });
+
+        var del = document.createElement('button');
+        del.type = 'button';
+        del.className = 'btn btn-ghost btn-sm btn-icon';
+        del.title = 'Hapus baris ini';
+        del.setAttribute('aria-label', 'Hapus baris ini');
+        del.innerHTML = '<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>';
+        del.addEventListener('click', function() { wrap.remove(); });
+
+        var descInput = document.createElement('input');
+        descInput.type = 'text';
+        descInput.className = 'form-input';
+        descInput.name = 'items[' + idx + '][description]';
+        descInput.placeholder = 'Keterangan (opsional)';
+        descInput.value = description || '';
+
+        row.appendChild(dateInput);
+        row.appendChild(nameInput);
+        row.appendChild(typeSelect);
+        row.appendChild(del);
+        wrap.appendChild(row);
+        wrap.appendChild(descInput);
+        list.appendChild(wrap);
+    }
+
+    document.getElementById('addHolidayDateBtn').addEventListener('click', function() {
+        addHolidayDateRow('');
     });
 
     var syncBtn = document.getElementById('syncHolidayBtn');
@@ -343,6 +440,13 @@
     window.editHoliday = function(h) {
         holidayForm.action = '{{ route("admin.holiday.index") }}/' + h.id;
         holidayMethod.value = 'PUT';
+        document.getElementById('holidayDateSingle').style.display = '';
+        document.getElementById('holiday_date').setAttribute('required', 'required');
+        document.getElementById('holidayDatesMulti').style.display = 'none';
+        document.getElementById('holidayDatesList').innerHTML = '';
+        document.getElementById('holidaySharedFields').style.display = '';
+        document.getElementById('holiday_name').setAttribute('required', 'required');
+        document.getElementById('holiday_type').setAttribute('required', 'required');
         document.getElementById('holiday_date').value = h.date ? h.date.split('T')[0] : '';
         document.getElementById('holiday_name').value = h.name || '';
         document.getElementById('holiday_description').value = h.description || '';
@@ -372,6 +476,23 @@
 
     holidayForm.addEventListener('submit', function(e) {
         e.preventDefault();
+        // Mode tambah: buang baris yang tanggalnya kosong agar tidak gagal validasi.
+        if (holidayMethod.value === 'POST') {
+            var rows = document.querySelectorAll('#holidayDatesList > div');
+            var filled = 0;
+            rows.forEach(function(wrap) {
+                var dateInput = wrap.querySelector('input[type=date]');
+                if (dateInput && dateInput.value) {
+                    filled++;
+                } else {
+                    wrap.remove();
+                }
+            });
+            if (filled === 0) {
+                alert('Isi minimal satu baris (tanggal + nama libur).');
+                return;
+            }
+        }
         var formData = new FormData(holidayForm);
         var formAction = holidayForm.action || '{{ route("admin.holiday.store") }}';
 

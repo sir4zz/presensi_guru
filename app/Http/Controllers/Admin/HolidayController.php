@@ -20,11 +20,39 @@ class HolidayController extends Controller
 
     public function store(StoreHolidayRequest $request)
     {
-        $holiday = Holiday::create($request->validated());
+        $items = $request->validated()['items'] ?? [];
+        $seen = [];
+        $created = 0;
+        $skipped = 0;
 
-        AuditLogService::created('hari_libur', $holiday, "Menambahkan hari libur: {$holiday->name} ({$holiday->date->format('d M Y')})");
+        \Illuminate\Support\Facades\DB::transaction(function () use ($items, &$seen, &$created, &$skipped) {
+            foreach ($items as $item) {
+                $date = \Carbon\Carbon::parse($item['date'])->toDateString();
+                if (isset($seen[$date]) || Holiday::whereDate('date', $date)->exists()) {
+                    $skipped++;
+                    continue;
+                }
+                $seen[$date] = true;
+                Holiday::create([
+                    'date' => $date,
+                    'name' => $item['name'],
+                    'description' => $item['description'] ?? null,
+                    'type' => $item['type'],
+                ]);
+                $created++;
+            }
+        });
 
-        return response()->json(['success' => true, 'message' => 'Hari libur berhasil ditambahkan.']);
+        if ($created === 0) {
+            return response()->json(['success' => false, 'message' => 'Tidak ada yang ditambahkan. Semua tanggal duplikat atau sudah ada.'], 422);
+        }
+
+        AuditLogService::log('create', 'hari_libur', "Menambah hari libur massal: {$created} dibuat, {$skipped} dilewati.");
+
+        $message = "{$created} hari libur ditambahkan."
+            . ($skipped > 0 ? " {$skipped} dilewati (duplikat/sudah ada)." : '');
+
+        return response()->json(['success' => true, 'message' => $message, 'created' => $created, 'skipped' => $skipped]);
     }
 
     public function update(UpdateHolidayRequest $request, $id)

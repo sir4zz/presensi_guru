@@ -285,6 +285,14 @@
     object-fit: cover;
 }
 
+/* Stream kamera depan datang dalam keadaan mirror di HP yang dipakai:
+   balik preview agar yang dilihat sudah normal (WYSIWYG).
+   Hasil jepretan dibalik juga saat disalin ke canvas (lihat attendance.js
+   inline di create.blade.php) sehingga foto tersimpan ikut normal. */
+#cameraPreview {
+    transform: scaleX(-1);
+}
+
 .attendance-camera-overlay {
     position: absolute;
     inset: 0;

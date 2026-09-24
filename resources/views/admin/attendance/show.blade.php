@@ -114,7 +114,7 @@
 </div>
 
 <x-modal id="editModal" title="Koreksi Absensi" size="lg">
-    <form method="POST" action="{{ route('admin.attendance.update', $attendance) }}">
+    <form method="POST" action="{{ route('admin.attendance.update', $attendance) }}" id="editForm" enctype="multipart/form-data">
         @csrf
         @method('PUT')
 
@@ -126,11 +126,11 @@
                 <option value="izin" {{ $attendance->status === 'izin' ? 'selected' : '' }}>Izin</option>
                 <option value="sakit" {{ $attendance->status === 'sakit' ? 'selected' : '' }}>Sakit</option>
                 <option value="dinas_luar" {{ $attendance->status === 'dinas_luar' ? 'selected' : '' }}>Dinas Luar</option>
-                <option value="tidak_ada_keterangan" {{ $attendance->status === 'tidak_ada_keterangan' ? 'selected' : '' }}>TAK</option>
+                <option value="alpha" {{ $attendance->status === 'alpha' ? 'selected' : '' }}>TAK</option>
             </select>
         </div>
 
-        <div style="display: grid; grid-template-columns: 1fr 1fr; gap: var(--space-4); margin-bottom: var(--space-4);">
+        <div style="display: grid; grid-template-columns: 1fr 1fr; gap: var(--space-4); margin-bottom: var(--space-4);" id="edit_jam_group">
             <div class="form-group">
                 <label for="jam_masuk" class="form-label">Jam Masuk</label>
                 <input type="time" id="jam_masuk" name="jam_masuk" class="form-input" value="{{ $attendance->jam_masuk ? \Carbon\Carbon::parse($attendance->jam_masuk)->format('H:i') : '' }}">
@@ -138,6 +138,22 @@
             <div class="form-group">
                 <label for="jam_pulang" class="form-label">Jam Pulang</label>
                 <input type="time" id="jam_pulang" name="jam_pulang" class="form-input" value="{{ $attendance->jam_pulang ? \Carbon\Carbon::parse($attendance->jam_pulang)->format('H:i') : '' }}">
+            </div>
+        </div>
+
+        <div id="edit_dinas_group" style="display: none;">
+            <div class="form-group" style="margin-bottom: var(--space-4);">
+                <label for="keperluan_dinas" class="form-label">Keperluan Dinas</label>
+                <textarea id="keperluan_dinas" name="keperluan_dinas" class="form-textarea">{{ $attendance->keperluan_dinas }}</textarea>
+            </div>
+            <div class="form-group" style="margin-bottom: var(--space-4);">
+                <label for="lokasi_dinas" class="form-label">Lokasi Dinas</label>
+                <input type="text" id="lokasi_dinas" name="lokasi_dinas" class="form-input" value="{{ $attendance->lokasi_dinas }}">
+            </div>
+            <div class="form-group" style="margin-bottom: var(--space-4);">
+                <label for="bukti_file" class="form-label">Ganti Lampiran (opsional)</label>
+                <input type="file" id="bukti_file" name="bukti_file" class="form-input" accept=".jpg,.jpeg,.png,.webp,.pdf">
+                <span class="form-help">Kosongkan bila lampiran tidak diganti.</span>
             </div>
         </div>
 
@@ -151,6 +167,8 @@
             <textarea id="alasan_koreksi" name="alasan_koreksi" class="form-textarea" required placeholder="Masukkan alasan koreksi..."></textarea>
         </div>
 
+        <div class="alert alert-danger" id="editError" style="display: none; margin-bottom: var(--space-4);"></div>
+
         <div class="modal-footer" style="padding: 0; border: none;">
             <x-button variant="secondary" onclick="document.getElementById('editModal').classList.remove('active')">Batal</x-button>
             <x-button type="submit">Simpan Koreksi</x-button>
@@ -158,3 +176,64 @@
     </form>
 </x-modal>
 @endsection
+
+@push('scripts')
+<script>
+(function() {
+    const statusSel = document.getElementById('status');
+    const jamMasuk = document.getElementById('jam_masuk');
+    const jamPulang = document.getElementById('jam_pulang');
+
+    function syncKoreksiFields() {
+        const isHadir = statusSel.value === 'hadir' || statusSel.value === 'terlambat';
+        const isDinas = statusSel.value === 'dinas_luar';
+        jamMasuk.disabled = !isHadir;
+        jamPulang.disabled = !isHadir;
+        if (!isHadir) {
+            jamMasuk.value = '';
+            jamPulang.value = '';
+        }
+        document.getElementById('edit_jam_group').style.opacity = isHadir ? '' : '0.45';
+        document.getElementById('edit_dinas_group').style.display = isDinas ? '' : 'none';
+    }
+    statusSel.addEventListener('change', syncKoreksiFields);
+    syncKoreksiFields();
+
+    document.getElementById('editForm').addEventListener('submit', function(e) {
+        e.preventDefault();
+        const form = e.target;
+        const errBox = document.getElementById('editError');
+        errBox.style.display = 'none';
+        const btn = form.querySelector('button[type=submit]');
+        btn.disabled = true;
+        fetch(form.action, {
+            method: 'POST',
+            headers: {
+                'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]').getAttribute('content'),
+                'Accept': 'application/json'
+            },
+            body: new FormData(form)
+        })
+        .then(function(r) { return r.json().then(function(d) { return { ok: r.ok, data: d }; }); })
+        .then(function(result) {
+            btn.disabled = false;
+            if (result.ok && result.data.success) {
+                window.location.reload();
+            } else {
+                const msgs = [];
+                if (result.data.errors) {
+                    for (const f in result.data.errors) { result.data.errors[f].forEach(function(m) { msgs.push(m); }); }
+                }
+                errBox.textContent = msgs.join(' ') || result.data.message || 'Koreksi gagal disimpan.';
+                errBox.style.display = 'block';
+            }
+        })
+        .catch(function() {
+            btn.disabled = false;
+            errBox.textContent = 'Terjadi kesalahan jaringan.';
+            errBox.style.display = 'block';
+        });
+    });
+})();
+</script>
+@endpush

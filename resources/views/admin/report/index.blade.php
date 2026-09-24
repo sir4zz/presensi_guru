@@ -38,6 +38,10 @@
             <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
             Export Rekap XLSX
         </x-button>
+        <x-button variant="danger" onclick="openPurgeModal()">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="3 6 5 6 21 6"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/></svg>
+            Hapus Data
+        </x-button>
     </div>
 </div>
 
@@ -98,7 +102,7 @@
     @if(!$daily['is_workday'])
         <div class="alert alert-info" style="margin-bottom: var(--space-4);">
             Tanggal ini bukan hari kerja
-            @if($daily['holiday']) (libur: {{ $daily['holiday']->name }})@elseif($daily['is_sunday']) (hari Minggu)@endif.
+            @if($daily['holiday']) (libur: {{ $daily['holiday']->name }})@elseif($daily['is_sunday'] ?? false) (hari Minggu)@elseif($daily['is_saturday'] ?? false) (hari Sabtu)@endif.
             Data yang tampil hanya record yang sudah ada.
         </div>
     @endif
@@ -281,6 +285,23 @@
         </div>
     </div>
 @endif
+
+<x-modal id="purgeModal" title="Hapus Data Absensi" size="md">
+    <div class="alert alert-danger" style="margin-bottom: var(--space-4);">
+        Tindakan ini menghapus data secara permanen dan tidak dapat dikembalikan.
+    </div>
+    <p id="purgePreview" class="text-sm" style="margin-bottom: var(--space-4);">Menghitung...</p>
+    <form id="purgeForm">
+        <div class="form-group" style="margin-bottom: var(--space-6);">
+            <label for="purgeConfirm" class="form-label">Ketik <code>HAPUS</code> untuk melanjutkan</label>
+            <input type="text" id="purgeConfirm" class="form-input" autocomplete="off" placeholder="HAPUS">
+        </div>
+        <div class="modal-footer" style="padding: 0; border: none;">
+            <button type="button" class="btn btn-secondary" onclick="document.getElementById('purgeModal').classList.remove('active')">Batal</button>
+            <button type="submit" id="purgeBtn" class="btn btn-danger" disabled>Hapus Permanen</button>
+        </div>
+    </form>
+</x-modal>
 @endsection
 
 @push('scripts')
@@ -314,6 +335,86 @@ document.getElementById('reportExportBtn').addEventListener('click', function() 
     }
     if (params.get('period') === 'yearly' && !params.get('year')) params.set('year', document.getElementById('yearFilter').value);
     window.location.href = '{{ route("admin.report.export") }}?' + params.toString();
+});
+
+function purgeScopeParams() {
+    const period = document.getElementById('periodFilter').value;
+    const params = new URLSearchParams();
+    if (period === 'daily') {
+        params.set('scope', 'day');
+        params.set('date', document.getElementById('dateFilter').value);
+    } else if (period === 'monthly') {
+        params.set('scope', 'month');
+        params.set('month', document.getElementById('monthFilter').value);
+        params.set('year', document.getElementById('yearFilter').value);
+    } else {
+        params.set('scope', 'year');
+        params.set('year', document.getElementById('yearFilter').value);
+    }
+    const guruId = document.getElementById('guruFilter').value;
+    if (guruId) params.set('guru_id', guruId);
+    return params;
+}
+
+function openPurgeModal() {
+    document.getElementById('purgeConfirm').value = '';
+    document.getElementById('purgeBtn').disabled = true;
+    refreshPurgePreview();
+    document.getElementById('purgeModal').classList.add('active');
+}
+
+function refreshPurgePreview() {
+    const box = document.getElementById('purgePreview');
+    box.textContent = 'Menghitung...';
+    fetch('{{ route("admin.report.purge-preview") }}?' + purgeScopeParams().toString(), {
+        headers: { 'Accept': 'application/json' }
+    })
+    .then(function(r) { return r.json(); })
+    .then(function(d) {
+        if (typeof d.records === 'number') {
+            box.innerHTML = `<strong>${d.records} record</strong> + ±<strong>${d.files} file</strong> akan dihapus permanen (<strong>${d.label}</strong>). Filter status diabaikan.`;
+        } else {
+            box.textContent = d.message || 'Gagal menghitung.';
+        }
+    })
+    .catch(function() { box.textContent = 'Gagal menghitung.'; });
+}
+
+document.getElementById('purgeConfirm').addEventListener('input', function() {
+    document.getElementById('purgeBtn').disabled = this.value !== 'HAPUS';
+});
+
+document.getElementById('purgeForm').addEventListener('submit', function(e) {
+    e.preventDefault();
+    const btn = document.getElementById('purgeBtn');
+    btn.disabled = true;
+    btn.textContent = 'Menghapus...';
+    const body = purgeScopeParams();
+    body.set('confirm', document.getElementById('purgeConfirm').value);
+    fetch('{{ route("admin.report.purge") }}', {
+        method: 'POST',
+        headers: {
+            'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]').getAttribute('content'),
+            'Accept': 'application/json',
+            'Content-Type': 'application/x-www-form-urlencoded'
+        },
+        body: body.toString()
+    })
+    .then(function(r) { return r.json().then(function(d) { return { ok: r.ok, data: d }; }); })
+    .then(function(result) {
+        if (result.ok && result.data.success) {
+            window.location.reload();
+        } else {
+            alert(result.data.message || 'Purge gagal.');
+            btn.disabled = false;
+            btn.textContent = 'Hapus Permanen';
+        }
+    })
+    .catch(function() {
+        alert('Terjadi kesalahan jaringan.');
+        btn.disabled = false;
+        btn.textContent = 'Hapus Permanen';
+    });
 });
 </script>
 @endpush
