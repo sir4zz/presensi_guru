@@ -675,6 +675,18 @@
     color: var(--color-text);
 }
 
+/* Grid info profil: 1 kolom di HP, 2 kolom di layar lebar. */
+.profile-grid {
+    display: grid;
+    grid-template-columns: 1fr;
+    gap: var(--space-6);
+}
+@media (min-width: 768px) {
+    .profile-grid {
+        grid-template-columns: 1fr 1fr;
+    }
+}
+
 /* Dinas luar dan ringkasan disiplin */
 .attendance-day-card { display:grid; grid-template-columns:1fr 1fr; border:1px solid var(--color-border-light); border-radius:var(--radius-lg); background:var(--color-surface); margin-bottom:var(--space-4); }
 .attendance-day-card > div { padding:var(--space-4); display:flex; flex-direction:column; gap:var(--space-1); }

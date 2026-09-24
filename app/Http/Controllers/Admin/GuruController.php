@@ -9,6 +9,8 @@ use App\Models\GuruProfile;
 use App\Models\User;
 use App\Services\AuditLogService;
 use App\Services\FileUploadService;
+use App\Services\GuruImportException;
+use App\Services\GuruImportService;
 use App\Services\SpreadsheetExportService;
 use Illuminate\Support\Facades\Hash;
 use Illuminate\Support\Facades\Storage;
@@ -141,55 +143,37 @@ class GuruController extends Controller
         return redirect()->route('admin.guru.index')->with('success', 'Guru berhasil dihapus.');
     }
 
-    public function import()
+    /** Unduh template Excel import (header sesuai format Dapodik). */
+    public function template(GuruImportService $importer, SpreadsheetExportService $excel)
+    {
+        return $excel->download(
+            'template_import_guru.xlsx',
+            GuruImportService::TEMPLATE_HEADERS,
+            [$importer->templateExampleRow()],
+            'Template'
+        );
+    }
+
+    public function import(GuruImportService $importer)
     {
         request()->validate([
-            'csv_file' => 'required|file|mimes:csv,txt|max:2048',
+            'import_file' => 'required|file|mimes:xlsx,xls,csv,txt|max:5120',
+        ], [
+            'import_file.mimes' => 'Format file harus XLSX, XLS, atau CSV.',
+            'import_file.max' => 'Ukuran file maksimal 5 MB.',
         ]);
 
-        $file = request()->file('csv_file');
-        $handle = fopen($file->getPathname(), 'r');
-        $header = fgetcsv($handle);
-
-        $imported = 0;
-        $skipped = 0;
-
-        while (($row = fgetcsv($handle)) !== false) {
-            $data = array_combine($header, $row);
-            $name = trim($data['name'] ?? $data['nama'] ?? '');
-            $nip = trim($data['nip'] ?? $data['username'] ?? '');
-
-            if (!$name || !$nip) {
-                $skipped++;
-                continue;
-            }
-
-            if (User::where('username', $nip)->exists()) {
-                $skipped++;
-                continue;
-            }
-
-            $user = User::create([
-                'name' => $name,
-                'username' => $nip,
-                'password' => Hash::make('password'),
-                'role' => 'guru',
-                'status' => 'aktif',
-            ]);
-
-            GuruProfile::create([
-                'user_id' => $user->id,
-                'nip' => $nip,
-            ]);
-
-            $imported++;
+        try {
+            $result = $importer->import(request()->file('import_file'));
+        } catch (GuruImportException $e) {
+            return redirect()->route('admin.guru.index')->with('error', $e->getMessage());
         }
 
-        fclose($handle);
+        $message = "Import selesai: {$result['imported']} guru berhasil diimport, {$result['skipped']} dilewati.";
 
-        AuditLogService::log('import', 'guru', "Import guru dari CSV: {$imported} berhasil, {$skipped} dilewati");
-
-        return redirect()->route('admin.guru.index')->with('success', "Import selesai: {$imported} guru berhasil diimport, {$skipped} dilewati.");
+        return redirect()->route('admin.guru.index')
+            ->with('success', $message)
+            ->with('import_errors', $result['errors']);
     }
 
     public function export(SpreadsheetExportService $excel)

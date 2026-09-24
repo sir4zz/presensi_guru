@@ -3,6 +3,7 @@
 use Illuminate\Support\Facades\Route;
 use Illuminate\Support\Facades\Auth;
 use App\Http\Controllers\Admin\DashboardController;
+use App\Http\Controllers\Admin\AccountController;
 use App\Http\Controllers\Admin\GuruController;
 use App\Http\Controllers\Admin\AttendanceController;
 use App\Http\Controllers\Admin\PermissionController;
@@ -109,6 +110,7 @@ Route::prefix('admin')->name('admin.')->middleware(['auth', 'role:admin'])->grou
     Route::get('/guru', [GuruController::class, 'index'])->name('guru.index');
     Route::get('/guru/create', [GuruController::class, 'create'])->name('guru.create');
     Route::get('/guru/export', [GuruController::class, 'export'])->name('guru.export');
+    Route::get('/guru/template', [GuruController::class, 'template'])->name('guru.template');
     Route::post('/guru', [GuruController::class, 'store'])->name('guru.store');
     Route::get('/guru/{id}', [GuruController::class, 'show'])->name('guru.show');
     Route::get('/guru/{id}/edit', [GuruController::class, 'edit'])->name('guru.edit');
@@ -150,9 +152,18 @@ Route::prefix('admin')->name('admin.')->middleware(['auth', 'role:admin'])->grou
     Route::put('/hari-libur/{id}', [HolidayController::class, 'update'])->name('holiday.update');
     Route::delete('/hari-libur/{id}', [HolidayController::class, 'destroy'])->name('holiday.delete');
 
-    // Profile & Password
-    Route::get('/profil', [ProfileController::class, 'index'])->name('profile');
+    // Profile & Password (legacy, dialihkan ke Pengaturan Akun)
+    Route::get('/profil', fn () => redirect()->route('admin.account.index'))->name('profile');
     Route::put('/password', [ProfileController::class, 'updatePassword'])->name('password.update');
+
+    // Pengaturan Akun
+    Route::get('/akun', [AccountController::class, 'index'])->name('account.index');
+    Route::put('/akun/profil', [AccountController::class, 'updateProfile'])->name('account.profile');
+    Route::put('/akun/password', [AccountController::class, 'updatePassword'])->name('account.password');
+    Route::post('/akun/admin', [AccountController::class, 'storeAdmin'])->name('account.store-admin');
+    Route::put('/akun/{user}/reset-password', [AccountController::class, 'resetPassword'])->name('account.reset-password');
+    Route::patch('/akun/{user}/status', [AccountController::class, 'toggleStatus'])->name('account.status');
+    Route::delete('/akun/{user}', [AccountController::class, 'destroy'])->name('account.destroy');
 });
 
 // ========================

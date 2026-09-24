@@ -24,6 +24,17 @@
     </div>
 </div>
 
+@if(session('import_errors'))
+    <div class="alert alert-warning" style="margin-bottom: var(--space-4); display: block;">
+        <strong>Beberapa baris dilewati:</strong>
+        <ul style="margin: var(--space-2) 0 0; padding-left: var(--space-5); font-size: var(--text-sm);">
+            @foreach(session('import_errors') as $err)
+                <li>{{ $err }}</li>
+            @endforeach
+        </ul>
+    </div>
+@endif
+
 <div class="filter-bar">
     <div class="search-input">
         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
@@ -139,19 +150,19 @@
 </x-modal>
 
 {{-- Modal Import --}}
-<x-modal id="importModal" title="Import Guru dari CSV">
+<x-modal id="importModal" title="Import Guru / Tendik">
     <form method="POST" action="{{ route('admin.guru.import') }}" enctype="multipart/form-data">
         @csrf
         <div class="form-group" style="margin-bottom: var(--space-4);">
-            <label for="import_file" class="form-label">File CSV (.csv)</label>
-            <input type="file" id="import_file" name="csv_file" class="form-input" accept=".csv" required>
+            <label for="import_file" class="form-label">File Excel / CSV</label>
+            <input type="file" id="import_file" name="import_file" class="form-input" accept=".xlsx,.xls,.csv" required>
+            <span class="form-help">Format Dapodik (.xlsx) atau CSV lama. Maksimal 5 MB.</span>
         </div>
         <div style="background: var(--color-bg-secondary, var(--color-surface-muted)); padding: var(--space-3); border-radius: var(--radius-md); margin-bottom: var(--space-4);">
-            <p style="font-size: var(--text-sm); font-weight: 500; margin-bottom: var(--space-2);">Format CSV:</p>
-            <code style="font-size: var(--text-xs); display: block; white-space: pre;">name,nip
-Budi Santoso,1987654321
-Siti Aminah,1987654322</code>
-            <p style="font-size: var(--text-xs); color: var(--color-text-muted); margin-top: var(--space-2);">Password default: <code>password</code>. NIP yang sudah ada akan dilewati.</p>
+            <p style="font-size: var(--text-sm); font-weight: 500; margin-bottom: var(--space-2);">Kolom yang dibaca (nama header, urutan bebas):</p>
+            <code style="font-size: var(--text-xs); display: block;">Nama, NIP, NUPTK, JK, Tempat Lahir, Tanggal Lahir, Status Kepegawaian, Jenis PTK, Agama, Alamat, HP, Email, NIK, NPWP, STATUS, ...</code>
+            <p style="font-size: var(--text-xs); color: var(--color-text-muted); margin-top: var(--space-2);">Password default: <code>password</code>. NIP yang sudah ada akan dilewati. Baris judul Dapodik otomatis diabaikan.</p>
+            <a href="{{ route('admin.guru.template') }}" class="btn btn-secondary btn-sm" style="margin-top: var(--space-2);">Unduh Template Excel</a>
         </div>
         <div class="modal-footer" style="padding: 0; border: none;">
             <x-button variant="secondary" onclick="document.getElementById('importModal').classList.remove('active')">Batal</x-button>

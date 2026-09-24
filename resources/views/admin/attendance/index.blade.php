@@ -14,7 +14,7 @@
 <div class="alert alert-info" style="margin-bottom: var(--space-4);">
     Halaman ini hanya menampilkan absensi <strong>hari ini</strong>.
     Untuk melihat rekap harian, bulanan, atau tahunan dan export Excel, gunakan menu
-    <a href="{{ route('admin.report.index') }}"><strong>Laporan</strong></a>.
+    <a href="{{ route('admin.report.index') }}" class="btn btn-sm btn-secondary" style="margin-left: var(--space-2);">Laporan</a>.
 </div>
 
 <div class="filter-bar">

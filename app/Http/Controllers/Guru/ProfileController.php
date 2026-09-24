@@ -10,7 +10,10 @@ class ProfileController extends Controller
 {
     public function index()
     {
-        return view('guru.profile.index');
+        $guru = auth()->user()->loadMissing([
+            'guruProfile.pendidikan', 'guruProfile.sertifikasi',
+        ]);
+        return view('guru.profile.index', compact('guru'));
     }
 
     public function updatePassword(UpdatePasswordRequest $request)

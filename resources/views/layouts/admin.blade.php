@@ -76,6 +76,10 @@
                         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/></svg>
                         Audit Log
                     </a>
+                    <a href="{{ route('admin.account.index') }}" class="sidebar-link {{ request()->routeIs('admin.account.*') ? 'active' : '' }}">
+                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>
+                        Pengaturan Akun
+                    </a>
                 </div>
             </nav>
 
@@ -111,7 +115,7 @@
                             </div>
                         </button>
                         <div class="dropdown-menu" id="userDropdownMenu">
-                            <a href="{{ route('admin.profile') }}" class="dropdown-item">
+                            <a href="{{ route('admin.account.index') }}" class="dropdown-item">
                                 <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>
                                 Profil
                             </a>
